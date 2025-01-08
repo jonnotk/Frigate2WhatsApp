@@ -1,3 +1,4 @@
+// constants-server.js
 import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
@@ -9,17 +10,17 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Define constants (without export)
-const BASE_DIR = process.env.BASE_DIR || "/opt/Frigate2WhatsApp";
-const PUBLIC_DIR = process.env.PUBLIC_DIR || path.join(BASE_DIR, "public");
-const DASHBOARD_DIR = process.env.DASHBOARD_DIR || path.join(BASE_DIR, "public");
-const COMPONENTS_DIR = process.env.COMPONENTS_DIR || path.join(BASE_DIR, "components");
-const MODULES_DIR = process.env.MODULES_DIR || path.join(BASE_DIR, "modules");
-const LOGS_DIR = process.env.LOGS_DIR || path.join(BASE_DIR, "logs");
-const LOG_FILE = process.env.LOG_FILE || path.join(LOGS_DIR, "app.log");
-const DASHBOARD_URL = process.env.DASHBOARD_URL || "/";
-const COMPONENTS_URL = process.env.COMPONENTS_URL || "/components";
-const MODULES_URL = process.env.MODULES_URL || "/modules";
+// Define constants
+const BASE_DIR = process.env.BASE_DIR || path.resolve(__dirname, ".."); //Using absolute path from project root
+const PUBLIC_DIR = path.join(BASE_DIR, "public");
+const DASHBOARD_DIR = path.join(BASE_DIR, "public");
+const COMPONENTS_DIR = path.join(BASE_DIR, "public", "components");
+const MODULES_DIR = path.join(BASE_DIR, "modules");
+const LOGS_DIR = path.join(BASE_DIR, "logs");
+const LOG_FILE = path.join(LOGS_DIR, "app.log");
+const DASHBOARD_URL = "/";
+const COMPONENTS_URL = "/components";
+const MODULES_URL = "/modules";
 const HOST = process.env.HOST || "0.0.0.0";
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 const WS_URL = process.env.WS_URL || `ws://${HOST}:${PORT}`;

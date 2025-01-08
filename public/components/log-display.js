@@ -1,12 +1,15 @@
 // components/log-display.js
+import { setupLogging } from "../utils/logger.js";
+
+// Initialize logging
+const { info, warn, error } = setupLogging();
 
 const logDisplay = {
   /**
    * Initializes the log display module.
    */
   initialize: () => {
-    const timestamp = new Date().toLocaleString();
-    console.log(`[${timestamp}] [Log Display] Initializing...`);
+    info("Log Display", "Initializing...");
 
     // Load persisted logs from localStorage
     const persistedLogs = JSON.parse(localStorage.getItem("logs") || "{}");
@@ -18,7 +21,7 @@ const logDisplay = {
       }
     }
 
-    console.log(`[${timestamp}] [Log Display] Initialized.`);
+    info("Log Display", "Initialized.");
   },
 
   /**
@@ -27,16 +30,15 @@ const logDisplay = {
    * @param {string} message - The message to append to the log.
    */
   appendLog: (containerId, message) => {
-    const timestamp = new Date().toLocaleString();
     const logContainer = document.getElementById(containerId);
 
     if (!logContainer) {
-      console.error(`[${timestamp}] [Log Display] Log container not found: ${containerId}`);
+      error("Log Display", `Log container not found: ${containerId}`);
       return;
     }
 
     const log = document.createElement("p");
-    log.textContent = `[${timestamp}] ${message}`;
+    log.textContent = `[${new Date().toLocaleString()}] ${message}`; // Include timestamp
     logContainer.appendChild(log);
     logContainer.scrollTop = logContainer.scrollHeight;
 
@@ -57,8 +59,7 @@ const logDisplay = {
    * @param {string} containerId - The ID of the log container.
    */
   clearLogs: (containerId) => {
-    const timestamp = new Date().toLocaleString();
-    console.log(`[${timestamp}] [Log Display] Clearing logs for ${containerId}...`);
+    info("Log Display", `Clearing logs for ${containerId}...`);
     const logContainer = document.getElementById(containerId);
 
     if (logContainer) {
@@ -69,7 +70,7 @@ const logDisplay = {
       delete persistedLogs[containerId];
       localStorage.setItem("logs", JSON.stringify(persistedLogs));
     } else {
-      console.error(`[${timestamp}] [Log Display] Log container not found: ${containerId}`);
+      error("Log Display", `Log container not found: ${containerId}`);
     }
   },
 
@@ -79,11 +80,10 @@ const logDisplay = {
    * @param {string} filename - The name of the file to export.
    */
   exportLogs: (containerId, filename = "logs.txt") => {
-    const timestamp = new Date().toLocaleString();
     const logContainer = document.getElementById(containerId);
 
     if (!logContainer) {
-      console.error(`[${timestamp}] [Log Display] Log container not found: ${containerId}`);
+      error("Log Display", `Log container not found: ${containerId}`);
       return;
     }
 
@@ -96,7 +96,7 @@ const logDisplay = {
     a.click();
     URL.revokeObjectURL(url);
 
-    console.log(`[${timestamp}] [Log Display] Logs exported from ${containerId} to ${filename}.`);
+    info("Log Display",`Logs exported from ${containerId} to ${filename}.`);
   },
 };
 

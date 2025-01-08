@@ -1,8 +1,8 @@
 // components/qr-modal.js
-import { logDisplay } from "./log-display.js";
 import { setupLogging } from "../../utils/logger.js";
 
-const { log, debug, info, warn, error } = setupLogging();
+// Initialize logging
+const { info, warn, error } = setupLogging();
 
 const qrModal = {
   /**
@@ -106,13 +106,13 @@ const qrModal = {
 
   // Function to explicitly show the QR modal
   showModal: () => {
-      info("QR-Modal", "Displaying QR code modal...");
-      const qrModalElement = document.getElementById("qr-modal");
-      if (qrModalElement) {
-          qrModalElement.style.display = "block";
-      } else {
-          error("QR-Modal", "QR modal element not found.");
-      }
+    info("QR-Modal", "Displaying QR code modal...");
+    const qrModalElement = document.getElementById("qr-modal");
+    if (qrModalElement) {
+      qrModalElement.style.display = "block";
+    } else {
+      error("QR-Modal", "QR modal element not found.");
+    }
   },
 };
 

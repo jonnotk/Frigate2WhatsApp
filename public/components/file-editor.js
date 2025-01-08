@@ -1,15 +1,15 @@
 // components/file-editor.js
 import { logDisplay } from "./log-display.js";
+import { setupLogging } from "../utils/logger.js";
+
+// Initialize logging
+const { info, warn, error } = setupLogging();
 
 let editor;
 
 const fileEditor = {
-  /**
-   * Initializes the file editor module.
-   */
   initialize: () => {
-    const timestamp = new Date().toLocaleString();
-    console.log(`[${timestamp}] [File Editor] Initializing...`);
+    info("File Editor", "Initializing...");
 
     // Initialize Ace Editor if it hasn't been initialized yet
     if (!editor) {
@@ -24,20 +24,21 @@ const fileEditor = {
     }
 
     // Attach event listeners to buttons
-    document.getElementById("save-file-button")?.addEventListener("click", fileEditor.saveFile);
-    document.getElementById("close-editor-button")?.addEventListener("click", fileEditor.closeEditor);
-    document.getElementById("cancel-editor-button")?.addEventListener("click", fileEditor.closeEditor);
+    document
+      .getElementById("save-file-button")
+      ?.addEventListener("click", fileEditor.saveFile);
+    document
+      .getElementById("close-editor-button")
+      ?.addEventListener("click", fileEditor.closeEditor);
+    document
+      .getElementById("cancel-editor-button")
+      ?.addEventListener("click", fileEditor.closeEditor);
 
-    console.log(`[${timestamp}] [File Editor] Initialized.`);
+    info("File Editor", "Initialized.");
   },
 
-  /**
-   * Opens the editor modal and loads the content of the specified file.
-   * @param {string} filename - The name of the file to edit.
-   */
   editFile: async (filename) => {
-    const timestamp = new Date().toLocaleString();
-    console.log(`[${timestamp}] [File Editor] Editing ${filename}...`);
+    info("File Editor", `Editing ${filename}...`);
 
     try {
       const res = await fetch(`/dashboard/api/edit/${filename}`);
@@ -60,25 +61,27 @@ const fileEditor = {
         // Show the editor modal
         document.getElementById("editor-modal").style.display = "block";
       } else {
-        const error = await res.json();
-        console.error(`[${timestamp}] [File Editor] Error fetching ${filename}:`, error);
-        logDisplay.appendLog("log-container-server", `Error fetching ${filename}: ${error.error || "Unknown error"}`);
+        const errorData = await res.json();
+        error("File Editor", `Error fetching ${filename}:`, errorData);
+        logDisplay.appendLog(
+          "log-container-server",
+          `Error fetching ${filename}: ${errorData.error || "Unknown error"}`
+        );
       }
-    } catch (error) {
-      console.error(`[${timestamp}] [File Editor] Network or other error:`, error);
-      logDisplay.appendLog("log-container-server", `Network or other error while fetching ${filename}`);
+    } catch (errorData) {
+      error("File Editor", "Network or other error:", errorData);
+      logDisplay.appendLog(
+        "log-container-server",
+        `Network or other error while fetching ${filename}`
+      );
     }
   },
 
-  /**
-   * Saves the content of the editor to the specified file.
-   */
   saveFile: async () => {
-    const timestamp = new Date().toLocaleString();
     const filename = document.getElementById("current-file").innerText;
     const content = editor.getValue();
 
-    console.log(`[${timestamp}] [File Editor] Saving ${filename}...`);
+    info("File Editor", `Saving ${filename}...`);
 
     try {
       const res = await fetch("/dashboard/api/save", {
@@ -90,26 +93,28 @@ const fileEditor = {
       });
 
       if (res.ok) {
-        console.log(`[${timestamp}] [File Editor] ${filename} saved successfully.`);
+        info("File Editor", `${filename} saved successfully.`);
         logDisplay.appendLog("log-container", `${filename} saved successfully.`);
         fileEditor.closeEditor();
       } else {
-        const error = await res.json();
-        console.error(`[${timestamp}] [File Editor] Error saving ${filename}:`, error);
-        logDisplay.appendLog("log-container", `Error saving ${filename}: ${error.error || "Unknown error"}`);
+        const errorData = await res.json();
+        error("File Editor", `Error saving ${filename}:`, errorData);
+        logDisplay.appendLog(
+          "log-container",
+          `Error saving ${filename}: ${errorData.error || "Unknown error"}`
+        );
       }
-    } catch (error) {
-      console.error(`[${timestamp}] [File Editor] Network or other error:`, error);
-      logDisplay.appendLog("log-container", `Network or other error while saving ${filename}`);
+    } catch (errorData) {
+      error("File Editor", "Network or other error:", errorData);
+      logDisplay.appendLog(
+        "log-container",
+        `Network or other error while saving ${filename}`
+      );
     }
   },
 
-  /**
-   * Closes the editor modal.
-   */
   closeEditor: () => {
-    const timestamp = new Date().toLocaleString();
-    console.log(`[${timestamp}] [File Editor] Closing editor...`);
+    info("File Editor", "Closing editor...");
     document.getElementById("editor-modal").style.display = "none";
   },
 };

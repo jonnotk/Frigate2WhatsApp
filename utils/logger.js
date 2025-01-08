@@ -1,11 +1,7 @@
 // utils/logger.js
 import fs from "fs";
 import path from "path";
-import { fileURLToPath } from "url";
 import { LOG_FILE, DEBUG } from "../constants-server.js";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // Define log levels
 const LOG_LEVELS = {
@@ -15,18 +11,10 @@ const LOG_LEVELS = {
   ERROR: "ERROR",
 };
 
-// Configuration for which modules to log (you can make this dynamic later)
-const LOG_MODULES = {
-  "MQTT": true,
-  "WhatsApp": true,
-  "WebSocket-Client": true,
-  "WebSocket-Server": true,
-};
+// Centralized log stream
+let logStream = null;
 
-// Object to store log streams for each module
-const logStreams = {};
-
-export function setupLogging(logFilePath) {
+function setupLogging(logFilePath = LOG_FILE) {
   if (!logFilePath) {
     console.error(
       "[Logger] Error: LOG_FILE environment variable is not set. Using default: ./logs/app.log"
@@ -48,30 +36,10 @@ export function setupLogging(logFilePath) {
     console.log(`[Logger] Log file created at: ${logFilePath}`);
   }
 
-  // Function to get or create a log stream for a specific module
-  const getLogStream = (moduleName) => {
-    if (!logStreams[moduleName]) {
-      const moduleLogFilePath = path.join(logDirectory, `${moduleName.toLowerCase()}.log`);
-      
-      // Create the module-specific log file if it doesn't exist
-      if (!fs.existsSync(moduleLogFilePath)) {
-        fs.writeFileSync(moduleLogFilePath, ""); // Create an empty file
-        console.log(`[Logger] Log file created for module ${moduleName} at: ${moduleLogFilePath}`);
-      }
+  // Create a single write stream for all logs
+  logStream = fs.createWriteStream(logFilePath, { flags: "a" });
 
-      // Create a write stream for the module-specific log file
-      logStreams[moduleName] = fs.createWriteStream(moduleLogFilePath, { flags: "a" });
-    }
-
-    return logStreams[moduleName];
-  };
-
-  const log = (moduleName, level, message, data = null) => {
-    // Check if the module should be logged
-    if (!LOG_MODULES[moduleName]) {
-      return; // Skip logging for this module
-    }
-
+  const log = (level, moduleName, message, data = null) => {
     const timestamp = new Date().toLocaleString();
     const logMessage = `[${timestamp}] [${moduleName}] [${level}] ${message} ${
       data ? JSON.stringify(data) : ""
@@ -82,16 +50,21 @@ export function setupLogging(logFilePath) {
       console.log(logMessage.trim()); // Trim to remove extra newline
     }
 
-    // Log to the module-specific log file
-    const moduleLogStream = getLogStream(moduleName);
-    moduleLogStream.write(logMessage);
+    // Log to the file using the central stream
+    logStream.write(logMessage);
   };
 
   // Helper function to log specific types of messages
-  const debug = (moduleName, message, data = null) => log(moduleName, LOG_LEVELS.DEBUG, message, data);
-  const info = (moduleName, message, data = null) => log(moduleName, LOG_LEVELS.INFO, message, data);
-  const warn = (moduleName, message, data = null) => log(moduleName, LOG_LEVELS.WARN, message, data);
-  const error = (moduleName, message, data = null) => log(moduleName, LOG_LEVELS.ERROR, message, data);
+  const debug = (moduleName, message, data = null) =>
+    log(LOG_LEVELS.DEBUG, moduleName, message, data);
+  const info = (moduleName, message, data = null) =>
+    log(LOG_LEVELS.INFO, moduleName, message, data);
+  const warn = (moduleName, message, data = null) =>
+    log(LOG_LEVELS.WARN, moduleName, message, data);
+  const error = (moduleName, message, data = null) =>
+    log(LOG_LEVELS.ERROR, moduleName, message, data);
 
   return { log, debug, info, warn, error };
 }
+
+export { setupLogging };

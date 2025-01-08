@@ -1,67 +1,61 @@
 // modules/script-manager.js
 import { spawn } from "child_process";
-import { getScriptProcess, setScriptProcess } from "../state.js"; // Correct relative path
-import { DASHBOARD_DIR } from "../constants-server.js"; // Correct relative path
+import { getScriptProcess, setScriptProcess } from "../state.js";
 import path from "path";
 import { fileURLToPath } from "url";
-import { setupLogging } from "../utils/logger.js"; // Added import
+import { setupLogging } from "../utils/logger.js";
+import { BASE_DIR } from "../constants-server.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Initialize logging
-const { debug, info, warn, error } = setupLogging();
+const { info, warn, error } = setupLogging();
 
 /**
  * Starts the script.
- * @param {function} log - The logging function.
+ * @param {object} logger - The logger instance.
  */
-function startScript(log) {
+function startScript(logger) {
   if (getScriptProcess()) {
-    log("[ScriptManager] Script is already running.");
-    info("ScriptManager", "Script is already running."); // Added logging
+    logger.warn("ScriptManager", "Script is already running.");
     return;
   }
 
-  // Use COMPONENTS_DIR to construct the path to the script
-  const scriptPath = path.join(DASHBOARD_DIR, "frigate-filter.js");
+  // Use BASE_DIR to construct the path to the script
+  const scriptPath = path.join(BASE_DIR, "public", "components" ,"frigate-filter.js");
 
   const scriptProcess = spawn("node", [scriptPath]);
 
   scriptProcess.stdout.on("data", (data) => {
-    log(`[Script] stdout: ${data}`);
-    info("Script", `stdout: ${data}`); // Added logging
+    logger.info("Script", data.toString());
   });
 
   scriptProcess.stderr.on("data", (data) => {
-    log(`[Script] stderr: ${data}`);
-    error("Script", `stderr: ${data}`); // Added logging
+    logger.error("Script", data.toString());
   });
 
   scriptProcess.on("close", (code) => {
-    log(`[Script] Script process exited with code ${code}`);
-    info("Script", `Script process exited with code ${code}`); // Added logging
+    logger.info("Script", `Script process exited with code ${code}`);
     setScriptProcess(null);
   });
 
   setScriptProcess(scriptProcess);
-  info("ScriptManager", "Script started successfully."); // Added logging
+  logger.info("ScriptManager", "Script started successfully.");
 }
 
 /**
  * Stops the script.
- * @param {function} log - The logging function.
+ * @param {object} logger - The logger instance.
  */
-function stopScript(log) {
+function stopScript(logger) {
   const scriptProcess = getScriptProcess();
   if (scriptProcess) {
-    scriptProcess.kill(); // This sends a SIGTERM signal to stop the process
-    setScriptProcess(null);
-    info("ScriptManager", "Script stopped successfully."); // Added logging
+    scriptProcess.kill();
+    logger.info("ScriptManager", "Script stopped successfully.");
   } else {
-    warn("ScriptManager", "No script is running."); // Added logging
+    logger.warn("ScriptManager", "No script is running.");
   }
 }
 
-// Export functions
 export { startScript, stopScript, getScriptProcess };

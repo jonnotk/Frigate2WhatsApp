@@ -7,15 +7,16 @@ import {
   setIsSubscribing,
   getWaConnected,
   setWaConnected,
-} from "../../state.js";
+} from "../state.js";
 import { showQRModal } from "./qr-modal.js";
-import { CONNECTION_STATES } from "../../constants.js";
-import { setupLogging } from "../../utils/logger.js";
+import { CONNECTION_STATES } from "../constants.js";
+import { setupLogging } from "../utils/logger.js";
 
-const { log, debug, info, warn, error } = setupLogging();
+// Initialize logging
+const { info, warn, error, debug } = setupLogging();
 
 // State management
-let connectionState = CONNECTION_STATES.DISCONNECTED; // Initial state
+let connectionState = CONNECTION_STATES.DISCONNECTED;
 
 /**
  * Updates the connection state and logs the change.
@@ -24,16 +25,15 @@ let connectionState = CONNECTION_STATES.DISCONNECTED; // Initial state
 function updateConnectionState(state) {
   if (!Object.values(CONNECTION_STATES).includes(state)) {
     const errorMessage = `Unknown connection state received: ${state}`;
-    error("WhatsApp-Connection",errorMessage);
+    error("WhatsApp-Connection", errorMessage);
     logDisplay.appendLog("log-container-server", errorMessage);
-    // Optionally: Send an error message through WebSocket
     sendWebSocketMessage("error", { message: errorMessage });
-    return; // Prevent updating to an unknown state
+    return;
   }
 
   connectionState = state;
-  info("WhatsApp-Connection",`Connection state updated: ${state}`);
-  updateStatusUI(state); // Update the UI element for 'State'
+  info("WhatsApp-Connection", `Connection state updated: ${state}`);
+  updateStatusUI(state);
 }
 
 /**
@@ -42,13 +42,16 @@ function updateConnectionState(state) {
  * @param {object} data - The message data.
  */
 function sendWebSocketMessage(event, data) {
-  const socket = window.ws; // Access the WebSocket from the global scope
+  const socket = window.ws;
   if (socket && socket.readyState === WebSocket.OPEN) {
     const message = JSON.stringify({ event, data });
     socket.send(message);
-    debug("WhatsApp-Connection",`WebSocket message sent: ${event}`, data);
+    debug("WhatsApp-Connection", `WebSocket message sent: ${event}`, data);
   } else {
-    warn("WhatsApp-Connection",`WebSocket not connected. Cannot send message: ${event}`);
+    warn(
+      "WhatsApp-Connection",
+      `WebSocket not connected. Cannot send message: ${event}`
+    );
   }
 }
 
@@ -64,7 +67,9 @@ async function retry(fn, retries = 3, delay = 1000) {
     return await fn();
   } catch (error) {
     if (retries > 0) {
-      info("WhatsApp-Connection",`Retrying... (${retries} attempts left)`, { error: error.message });
+      info("WhatsApp-Connection",`Retrying... (${retries} attempts left)`, {
+        error: error.message,
+      });
       await new Promise((resolve) => setTimeout(resolve, delay));
       return retry(fn, retries - 1, delay);
     }
@@ -76,7 +81,7 @@ async function retry(fn, retries = 3, delay = 1000) {
  * Initializes the WhatsApp Connection module.
  */
 function initialize() {
-  info("WhatsApp-Connection","Initializing...");
+  info("WhatsApp-Connection", "Initializing...");
 
   // Attach event listeners to buttons
   document
@@ -98,17 +103,20 @@ function initialize() {
     .getElementById("forwarding-toggle")
     ?.addEventListener("change", handleForwardingToggle);
 
-  info("WhatsApp-Connection","Initialized.");
+  info("WhatsApp-Connection", "Initialized.");
 }
 
 // Function to start the WhatsApp authorization process
 function initWhatsAppConnection() {
   if (getWaConnected()) {
-    info("WhatsApp-Connection","WhatsApp is already connected. Skipping initialization.");
+    info(
+      "WhatsApp-Connection",
+      "WhatsApp is already connected. Skipping initialization."
+    );
     return;
   }
 
-  info("WhatsApp-Connection","Initializing WhatsApp connection...");
+  info("WhatsApp-Connection", "Initializing WhatsApp connection...");
   updateConnectionState(CONNECTION_STATES.INITIALIZING);
   sendWebSocketMessage("wa-subscribe-request", {});
 }
@@ -117,7 +125,7 @@ function initWhatsAppConnection() {
  * Initiates the WhatsApp subscription process.
  */
 function subscribeWhatsApp() {
-  info("WhatsApp-Connection","Subscribing to WhatsApp...");
+  info("WhatsApp-Connection", "Subscribing to WhatsApp...");
   setIsSubscribing(true);
   updateConnectionState(CONNECTION_STATES.SUBSCRIBING);
   sendWebSocketMessage("wa-subscribe-request", {});
@@ -127,7 +135,7 @@ function subscribeWhatsApp() {
  * Unsubscribes from WhatsApp.
  */
 function unsubscribeWhatsApp() {
-  info("WhatsApp-Connection","Unsubscribing from WhatsApp...");
+  info("WhatsApp-Connection", "Unsubscribing from WhatsApp...");
   setIsSubscribing(false);
   updateConnectionState(CONNECTION_STATES.UNSUBSCRIBING);
   sendWebSocketMessage("wa-unsubscribe-request", {});
@@ -137,7 +145,7 @@ function unsubscribeWhatsApp() {
  * Connects to WhatsApp.
  */
 function connectWhatsApp() {
-  info("WhatsApp-Connection","Connecting to WhatsApp...");
+  info("WhatsApp-Connection", "Connecting to WhatsApp...");
   updateConnectionState(CONNECTION_STATES.CONNECTING);
   sendWebSocketMessage("wa-connect-request", {});
 }
@@ -146,7 +154,7 @@ function connectWhatsApp() {
  * Disconnects from WhatsApp.
  */
 function disconnectWhatsApp() {
-  info("WhatsApp-Connection","Disconnecting from WhatsApp...");
+  info("WhatsApp-Connection", "Disconnecting from WhatsApp...");
   updateConnectionState(CONNECTION_STATES.DISCONNECTING);
   sendWebSocketMessage("wa-disconnect-request", {});
 }
@@ -159,13 +167,13 @@ async function handleAuthorize() {
 
   if (connected) {
     // Unauthorize
-    info("WhatsApp-Connection","Unauthorizing WhatsApp...");
+    info("WhatsApp-Connection", "Unauthorizing WhatsApp...");
     sendWebSocketMessage("wa-authorize-request", { authorize: false });
     authorizeButton.textContent = "Authorize";
     authorizeButton.disabled = false;
   } else {
     // Authorize
-    info("WhatsApp-Connection","Authorizing WhatsApp...");
+    info("WhatsApp-Connection", "Authorizing WhatsApp...");
     showQRModal();
     sendWebSocketMessage("wa-authorize-request", { authorize: true });
     authorizeButton.textContent = "Awaiting QR";
@@ -212,41 +220,41 @@ function handleWhatsAppMessage(message) {
     case "wa-subscribed":
       setIsSubscribed(true);
       setIsSubscribing(false);
-      info("WhatsApp-Connection","Successfully subscribed to WhatsApp.");
+      info("WhatsApp-Connection", "Successfully subscribed to WhatsApp.");
       showPopup("Successfully subscribed to WhatsApp.", "popup-subscribed");
       break;
 
     case "wa-unsubscribed":
       setIsSubscribed(false);
       setIsSubscribing(false);
-      info("WhatsApp-Connection","Successfully unsubscribed from WhatsApp.");
+      info("WhatsApp-Connection", "Successfully unsubscribed from WhatsApp.");
       // Only show the popup if the unsubscription was intentional (e.g., user clicked Unsubscribe)
       // You might need additional logic to track intentional vs. unintentional unsubscriptions
       // if (!message.data.intentional) {
-      //   showPopup("Successfully unsubscribed from WhatsApp.", "popup-unsubscribed");
+      //  showPopup("Successfully unsubscribed from WhatsApp.", "popup-unsubscribed");
       // }
       break;
 
     case "wa-connected":
       setWaConnected(true);
-      info("WhatsApp-Connection","WhatsApp connected.");
+      info("WhatsApp-Connection", "WhatsApp connected.");
       showPopup("WhatsApp connected.", "popup-connected");
-      updateStatusUI(CONNECTION_STATES.CONNECTED);
+      updateConnectionState(CONNECTION_STATES.CONNECTED);
       break;
 
     case "wa-disconnected":
       setWaConnected(false);
-      info("WhatsApp-Connection","WhatsApp disconnected.");
+      info("WhatsApp-Connection", "WhatsApp disconnected.");
       showPopup("WhatsApp disconnected.", "popup-disconnected");
-      updateStatusUI(CONNECTION_STATES.DISCONNECTED);
+      updateConnectionState(CONNECTION_STATES.DISCONNECTED);
       break;
 
     case "wa-authorized":
       info("WhatsApp-Connection",`WhatsApp authorization status updated: ${message.data.authorized}`);
       if (message.data.authorized) {
-        updateStatusUI(CONNECTION_STATES.CONNECTED);
+        updateConnectionState(CONNECTION_STATES.CONNECTED);
       } else {
-        updateStatusUI(CONNECTION_STATES.DISCONNECTED);
+        updateConnectionState(CONNECTION_STATES.DISCONNECTED);
       }
       break;
 
@@ -269,12 +277,12 @@ function handleWhatsAppMessage(message) {
       break;
 
     case "error":
-      error("WhatsApp-Connection",`Error: ${message.data}`);
+      error("WhatsApp-Connection", `Error: ${message.data}`);
       showPopup(`Error: ${message.data}`, "popup-error");
       break;
 
     default:
-      warn("WhatsApp-Connection",`Unknown event received: ${message.event}`);
+      warn("WhatsApp-Connection", `Unknown event received: ${message.event}`);
       showPopup(`Unknown event: ${message.event}`, "popup-unknown-event");
   }
 }
@@ -289,7 +297,7 @@ function updateForwardingStatus(forwarding) {
     forwardingToggle.checked = forwarding;
     info("WhatsApp-Connection",`Forwarding status updated in UI: ${forwarding ? "Enabled" : "Disabled"}`);
   } else {
-    warn("WhatsApp-Connection","Forwarding toggle not found in UI.");
+    warn("WhatsApp-Connection", "Forwarding toggle not found in UI.");
   }
 }
 /**
@@ -297,35 +305,39 @@ function updateForwardingStatus(forwarding) {
  * @param {string} state - The new connection state.
  */
 function updateStatusUI(state) {
-  const stateElement = document.getElementById("status");
-  if (stateElement) {
-    stateElement.textContent = `State: ${state}`;
+  const stateElement = document.getElementById("wa-state");
+  const statusSpan = document.getElementById("status");
+
+  if (stateElement && statusSpan) {
+    statusSpan.textContent = `${state}`;
+    statusSpan.className = ''; // Reset class names
+
     // Add visual cues based on state
     switch (state) {
       case CONNECTION_STATES.CONNECTED:
-        stateElement.className = "connected";
+        statusSpan.classList.add("connected");
         break;
       case CONNECTION_STATES.DISCONNECTED:
-        stateElement.className = "disconnected";
+        statusSpan.classList.add("disconnected");
         break;
       case CONNECTION_STATES.AWAITING_QR:
       case CONNECTION_STATES.CONNECTING:
       case CONNECTION_STATES.LOADING:
       case CONNECTION_STATES.AUTHENTICATED:
-        stateElement.className = "connecting";
+        statusSpan.classList.add("connecting");
         break;
       case CONNECTION_STATES.INITIALIZATION_FAILED:
       case CONNECTION_STATES.AUTHENTICATION_FAILED:
       case CONNECTION_STATES.PROXY_ERROR:
-        stateElement.className = "error";
+        statusSpan.classList.add("error");
         break;
       default:
-        stateElement.className = "unknown";
+        statusSpan.classList.add("unknown");
     }
 
     info("WhatsApp-Connection",`Connection state updated in UI: ${state}`);
   } else {
-    warn("WhatsApp-Connection","Connection state element (status) not found in UI.");
+    warn("WhatsApp-Connection","Connection state element (wa-state or status) not found in UI.");
   }
 }
 

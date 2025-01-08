@@ -12,16 +12,17 @@ import {
   setWaConnected,
   getWaAccount,
   setWaAccount,
-} from "../../state.js";
+} from "../state.js";
 import {
-  initialize as initWhatsAppConnection,
+  initWhatsAppConnection,
   handleWhatsAppMessage,
   updateStatusUI,
-  updateForwardingStatus
+  updateForwardingStatus,
 } from "./whatsapp-connection.js";
-import { CONNECTION_STATES } from "../../constants.js";
-import { setupLogging } from "../../utils/logger.js";
+import { CONNECTION_STATES } from "../constants.js";
+import { setupLogging } from "../utils/logger.js";
 
+// Initialize logging
 const { log, debug, info, warn, error } = setupLogging();
 
 let WS_BASE_URL = null;
@@ -47,11 +48,11 @@ async function initializeSocket() {
     }
 
     connectWebSocket(sessionId);
-  } catch (error) {
-    console.error("[WebSocket Client] Error initializing WebSocket:", error);
+  } catch (errorData) {
+    error("WebSocket-Client", "Error initializing WebSocket:", errorData);
     logDisplay.appendLog(
       "log-container-server",
-      `[WebSocket Client] Error initializing WebSocket: ${error.message}`
+      `[WebSocket Client] Error initializing WebSocket: ${errorData.message}`
     );
   }
 }
@@ -59,7 +60,7 @@ async function initializeSocket() {
 function connectWebSocket(sessionId) {
   // Construct the WebSocket URL with the session ID as a query parameter
   const fullWsUrl = `${wsUrl}?sessionId=${sessionId}`;
-  console.log(`[WebSocket Client] WebSocket URL set to: ${fullWsUrl}`);
+  info("WebSocket-Client", `WebSocket URL set to: ${fullWsUrl}`);
 
   // Create WebSocket connection to the server
   socket = new WebSocket(fullWsUrl);
@@ -69,8 +70,7 @@ function connectWebSocket(sessionId) {
 
   // Event: Connection opened
   socket.onopen = () => {
-    const timestamp = new Date().toLocaleString();
-    info("WebSocket-Client",`[${timestamp}] [WebSocket Client] Connection established.`);
+    info("WebSocket-Client", "[WebSocket Client] Connection established.");
     logDisplay.appendLog(
       "log-container-server",
       "[WebSocket Client] Connected to server."
@@ -83,39 +83,32 @@ function connectWebSocket(sessionId) {
 
   // Event: Message received
   socket.onmessage = (event) => {
-    console.log(event.data);
-    const timestamp = new Date().toLocaleString();
-    debug("WebSocket-Client",`[${timestamp}] [WebSocket Client] Message received: ${event.data}`);
+    debug("WebSocket-Client",`[WebSocket Client] Message received: ${event.data}`);
 
     try {
       const message = JSON.parse(event.data);
       handleWebSocketMessage(message);
-    } catch (error) {
-      console.error(
-        `[${timestamp}] [WebSocket Client] Error processing message:`,
-        error
-      );
+    } catch (errorData) {
+      error("WebSocket-Client",`Error processing message: ${errorData}`);
       logDisplay.appendLog(
         "log-container-server",
-        `[WebSocket Client] Error processing message: ${error.message}`
+        `[WebSocket Client] Error processing message: ${errorData.message}`
       );
     }
   };
 
   // Event: Connection error
-  socket.onerror = (error) => {
-    const timestamp = new Date().toLocaleString();
-    error("WebSocket-Client",`[${timestamp}] [WebSocket Client] Error: ${error}`);
+  socket.onerror = (errorData) => {
+    error("WebSocket-Client",`[WebSocket Client] Error: ${errorData}`);
     logDisplay.appendLog(
       "log-container-server",
-      `[WebSocket Client] Error: ${error.message || error}`
+      `[WebSocket Client] Error: ${errorData.message || errorData}`
     );
   };
 
   // Event: Connection closed
   socket.onclose = () => {
-    const timestamp = new Date().toLocaleString();
-    warn("WebSocket-Client",`[${timestamp}] [WebSocket Client] Connection closed. Reconnecting in 5 seconds...`);
+    warn("WebSocket-Client",`[WebSocket Client] Connection closed. Reconnecting in 5 seconds...`);
     logDisplay.appendLog(
       "log-container-server",
       "[WebSocket Client] Connection closed. Reconnecting in 5 seconds..."
@@ -128,7 +121,6 @@ function connectWebSocket(sessionId) {
  * Fetch initial statuses for WhatsApp and script.
  */
 async function fetchInitialStatuses() {
-  const timestamp = new Date().toLocaleString();
 
   // Fetch WhatsApp status
   try {
@@ -136,7 +128,7 @@ async function fetchInitialStatuses() {
     const waStatusData = await waStatusResponse.json();
 
     if (waStatusData.success) {
-      info("WebSocket-Client",`[${timestamp}] [WebSocket Client] Initial WhatsApp status: ${waStatusData.data}`);
+      info("WebSocket-Client",`Initial WhatsApp status: ${waStatusData.data}`);
       updateWhatsAppStatus(waStatusData.data.connected);
       setWaAccount(waStatusData.data.account);
 
@@ -158,22 +150,22 @@ async function fetchInitialStatuses() {
 
       if (subscriptionData.success) {
         setIsSubscribed(subscriptionData.data.subscribed);
-        info("WebSocket-Client",`[${timestamp}] [WebSocket Client] Subscription status updated to: ${subscriptionData.data.subscribed}`);
+        info("WebSocket-Client",`Subscription status updated to: ${subscriptionData.data.subscribed}`);
       } else {
-        warn("WebSocket-Client",`[${timestamp}] [WebSocket Client] Failed to fetch subscription status: ${subscriptionData.error}`);
+        warn("WebSocket-Client",`Failed to fetch subscription status: ${subscriptionData.error}`);
       }
     } else {
-      warn("WebSocket-Client",`[${timestamp}] [WebSocket Client] Failed to fetch WhatsApp status: ${waStatusData.error}`);
+      warn("WebSocket-Client",`Failed to fetch WhatsApp status: ${waStatusData.error}`);
       logDisplay.appendLog(
         "log-container-server",
         `Failed to fetch WhatsApp status: ${waStatusData.error}`
       );
     }
-  } catch (error) {
-    error("WebSocket-Client",`[${timestamp}] [WebSocket Client] Error fetching WhatsApp status: ${error}`);
+  } catch (errorData) {
+    error("WebSocket-Client",`Error fetching WhatsApp status: ${errorData}`);
     logDisplay.appendLog(
       "log-container-server",
-      `Error fetching WhatsApp status: ${error.message}`
+      `Error fetching WhatsApp status: ${errorData.message}`
     );
   }
 
@@ -183,20 +175,20 @@ async function fetchInitialStatuses() {
     const scriptStatusData = await scriptStatusResponse.json();
 
     if (scriptStatusData.success) {
-      info("WebSocket-Client",`[${timestamp}] [WebSocket Client] Initial script status: ${scriptStatusData.data}`);
+      info("WebSocket-Client",`Initial script status: ${scriptStatusData.data}`);
       updateScriptStatus(scriptStatusData.data.running);
     } else {
-      warn("WebSocket-Client",`[${timestamp}] [WebSocket Client] Failed to fetch script status: ${scriptStatusData.error}`);
+      warn("WebSocket-Client",`Failed to fetch script status: ${scriptStatusData.error}`);
       logDisplay.appendLog(
         "log-container-server",
         `Failed to fetch script status: ${scriptStatusData.error}`
       );
     }
-  } catch (error) {
-    error("WebSocket-Client",`[${timestamp}] [WebSocket Client] Error fetching script status: ${error}`);
+  } catch (errorData) {
+    error("WebSocket-Client",`Error fetching script status: ${errorData}`);
     logDisplay.appendLog(
       "log-container-server",
-      `Error fetching script status: ${error.message}`
+      `Error fetching script status: ${errorData.message}`
     );
   }
 }
@@ -205,10 +197,9 @@ async function fetchInitialStatuses() {
  * @param {object} message - WebSocket message object.
  */
 function handleWebSocketMessage(message) {
-  const timestamp = new Date().toLocaleString();
   switch (message.event) {
     case "server-connected":
-      info("WebSocket-Client",`[${timestamp}] [WebSocket Client] Server says: ${message.data}`);
+      info("WebSocket-Client",`Server says: ${message.data}`);
       logDisplay.appendLog(
         "log-container-server",
         `[WebSocket Client] Server message: ${message.data}`
@@ -216,12 +207,12 @@ function handleWebSocketMessage(message) {
       break;
 
     case "qr":
-      info("WebSocket-Client",`[${timestamp}] [WebSocket Client] QR Code received.`);
+      info("WebSocket-Client",`QR Code received.`);
       qrModal.updateQR(message.data);
       break;
 
     case "wa-status":
-      info("WebSocket-Client",`[${timestamp}] [WebSocket Client] WhatsApp status updated: ${message.data}`);
+      info("WebSocket-Client",`WhatsApp status updated: ${message.data}`);
       updateWhatsAppStatus(message.data.connected);
       if (message.data.connected) {
         qrModal.autoCloseOnConnection();
@@ -229,17 +220,17 @@ function handleWebSocketMessage(message) {
       break;
 
     case "wa-account":
-      info("WebSocket-Client",`[${timestamp}] [WebSocket Client] WhatsApp account updated: ${message.data}`);
+      info("WebSocket-Client",`WhatsApp account updated: ${message.data}`);
       setWaAccount(message.data);
       break;
 
     case "script-status":
-      info("WebSocket-Client",`[${timestamp}] [WebSocket Client] Script status updated: ${message.data}`);
+      info("WebSocket-Client",`Script status updated: ${message.data}`);
       updateScriptStatus(message.data.running);
       break;
 
     case "new-camera":
-      info("WebSocket-Client",`[${timestamp}] [WebSocket Client] New camera detected: ${message.data.camera}`);
+      info("WebSocket-Client",`New camera detected: ${message.data.camera}`);
       cameraMapping.updateCameraList(getCameras());
       break;
 
@@ -256,14 +247,12 @@ function handleWebSocketMessage(message) {
     case "wa-connected":
       setWaConnected(true);
       info("WebSocket-Client", "WhatsApp connected.");
-      showPopup("WhatsApp connected.", "popup-connected");
       updateStatusUI(CONNECTION_STATES.CONNECTED);
       break;
 
     case "wa-disconnected":
       setWaConnected(false);
       info("WebSocket-Client", "WhatsApp disconnected.");
-      showPopup("WhatsApp disconnected.", "popup-disconnected");
       updateStatusUI(CONNECTION_STATES.DISCONNECTED);
       break;
 
@@ -282,12 +271,12 @@ function handleWebSocketMessage(message) {
       break;
 
     case "connection-state":
-      info("WebSocket-Client",`[${timestamp}] [WebSocket Client] WhatsApp connection state updated: ${message.data}`);
+      info("WebSocket-Client",`WhatsApp connection state updated: ${message.data}`);
       updateStatusUI(message.data.state);
       break;
 
     case "wa-error":
-      error("WebSocket-Client",`[${timestamp}] [WebSocket Client] WhatsApp error: ${message.data.message}`);
+      error("WebSocket-Client",`WhatsApp error: ${message.data.message}`);
       logDisplay.appendLog(
         "log-container-server",
         `[WebSocket Client] WhatsApp error: ${message.data.message}`
@@ -295,7 +284,7 @@ function handleWebSocketMessage(message) {
       break;
 
     case "initial-status":
-      info("WebSocket-Client",`[${timestamp}] [WebSocket Client] Initial status received: ${message.data}`);
+      info("WebSocket-Client",`Initial status received: ${message.data}`);
       updateWhatsAppStatus(message.data.connected);
       setWaAccount(message.data.account);
       updateStatusUI(message.data.state);
@@ -303,28 +292,28 @@ function handleWebSocketMessage(message) {
       break;
 
     case "wa-groups":
-      info("WebSocket-Client",`[${timestamp}] [WebSocket Client] WhatsApp groups updated: ${message.data}`);
+      info("WebSocket-Client",`WhatsApp groups updated: ${message.data}`);
       updateGroupList(message.data);
       break;
 
     case "wa-authorizing":
-      info("WebSocket-Client",`[${timestamp}] [WebSocket Client] WhatsApp authorizing: ${message.data.authorizing}`);
+      info("WebSocket-Client",`WhatsApp authorizing: ${message.data.authorizing}`);
       updateStatusUI(CONNECTION_STATES.AWAITING_QR); // Update button to "Awaiting QR"
       break;
 
     case "session-restored":
-      info("WebSocket-Client",`[${timestamp}] [WebSocket Client] Session restored.`);
+      info("WebSocket-Client",`Session restored.`);
       fetchInitialStatuses(); // Re-fetch initial statuses after restoring a session
       break;
-    
+
     case "config":
-      info("WebSocket-Client",`[${timestamp}] [WebSocket Client] Config received:`, message.data);
+      info("WebSocket-Client",`Config received:`, message.data);
       wsUrl = message.data.wsUrl; // Update wsUrl
       initializeSocket(); // reconnect with the correct URL
       break;
 
     default:
-      warn("WebSocket-Client",`[${timestamp}] [WebSocket Client] Unknown event received: ${message.event}`);
+      warn("WebSocket-Client",`Unknown event received: ${message.event}`);
       logDisplay.appendLog(
         "log-container-server",
         `[WebSocket Client] Unknown event: ${message.event}`
@@ -337,20 +326,13 @@ function handleWebSocketMessage(message) {
  * @param {boolean} connected - WhatsApp connection status.
  */
 function updateWhatsAppStatus(connected) {
-  const timestamp = new Date().toLocaleString();
-  const statusElement = document.getElementById("wa-status-value"); // Corrected element ID
+  const statusElement = document.getElementById("wa-status-value");
   if (statusElement) {
     statusElement.textContent = `${connected ? "Connected" : "Disconnected"}`;
     statusElement.className = connected ? "connected" : "disconnected";
-    info("WebSocket-Client",
-      `[${timestamp}] [WebSocket Client] WhatsApp status updated in UI: ${
-        connected ? "Connected" : "Disconnected"
-      }`
-    );
+    info("WebSocket-Client",`WhatsApp status updated in UI: ${connected ? "Connected" : "Disconnected"}`);
   } else {
-    error("WebSocket-Client",
-      `[${timestamp}] [WebSocket Client] WhatsApp status element not found in UI.`
-    );
+    error("WebSocket-Client",`WhatsApp status element not found in UI.`);
     logDisplay.appendLog(
       "log-container-server",
       `WhatsApp status element not found in UI.`
@@ -363,19 +345,12 @@ function updateWhatsAppStatus(connected) {
  * @param {boolean} running - Script running status.
  */
 function updateScriptStatus(running) {
-  const timestamp = new Date().toLocaleString();
   const scriptElement = document.getElementById("script-status");
   if (scriptElement) {
     scriptElement.textContent = `Script: ${running ? "Running" : "Stopped"}`;
-    info("WebSocket-Client",
-      `[${timestamp}] [WebSocket Client] Script status updated in UI: ${
-        running ? "Running" : "Stopped"
-      }`
-    );
+    info("WebSocket-Client",`Script status updated in UI: ${running ? "Running" : "Stopped"}`);
   } else {
-    error("WebSocket-Client",
-      `[${timestamp}] [WebSocket Client] Script status element not found in UI.`
-    );
+    error("WebSocket-Client",`Script status element not found in UI.`);
     logDisplay.appendLog(
       "log-container-server",
       `Script status element not found in UI.`
@@ -388,7 +363,6 @@ function updateScriptStatus(running) {
  * @param {Array} groups - Array of group objects with 'id' and 'name' properties.
  */
 function updateGroupList(groups) {
-  const timestamp = new Date().toLocaleString();
   const groupListElement = document.getElementById("group-list");
 
   if (groupListElement) {
@@ -400,11 +374,9 @@ function updateGroupList(groups) {
       groupListElement.appendChild(listItem);
     });
 
-    info("WebSocket-Client",`[${timestamp}] [WebSocket Client] Group list updated in UI.`);
+    info("WebSocket-Client",`Group list updated in UI.`);
   } else {
-    error("WebSocket-Client",
-      `[${timestamp}] [WebSocket Client] Group list element not found in UI.`
-    );
+    error("WebSocket-Client",`Group list element not found in UI.`);
     logDisplay.appendLog(
       "log-container-server",
       "Group list element not found in UI."

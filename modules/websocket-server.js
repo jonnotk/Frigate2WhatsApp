@@ -16,23 +16,20 @@ import {
 } from "./whatsapp.js";
 import { getIsSubscribed, getIsSubscribing, setIsSubscribing } from "../state.js";
 import { CONNECTION_STATES } from "../constants.js";
-import { DASHBOARD_URL, PORT, WS_URL } from "../constants-server.js";
+import { DASHBOARD_URL, PORT, WS_URL, BASE_DIR } from "../constants-server.js";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-
 import { setupLogging } from "../utils/logger.js";
-const { log, debug, info, warn, error } = setupLogging();
 
-// Resolve the directory of the current module
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Define the directory for WhatsApp session data
-const authDir = path.join(__dirname, "../", "modules", "whatsapp-sessions");
+// Initialize logging
+const { log, debug, info, warn, error } = setupLogging();
 
 let wss = null;
-let connectionState = CONNECTION_STATES.DISCONNECTED; // Track connection state from whatsapp.js
+let connectionState = CONNECTION_STATES.DISCONNECTED;
 
 /**
  * Validates the received WebSocket message payload.
@@ -56,53 +53,34 @@ function validatePayload(payload) {
  */
 function initializeWebSocket(server) {
   info("WebSocket-Server", "Initializing WebSocket server...");
-  console.log(
-    `[${new Date().toLocaleString()}] [WebSocket Server] Initializing WebSocket server...`
-  );
 
   wss = new WebSocketServer({ noServer: true });
 
   server.on("upgrade", (request, socket, head) => {
-    const timestamp = new Date().toLocaleString();
     const pathname = new URL(request.url, `http://${request.headers.host}`).pathname;
     const searchParams = new URL(request.url, `http://${request.headers.host}`).searchParams;
-    const sessionId = searchParams.get("sessionId"); // Get sessionId from query parameter
+    const sessionId = searchParams.get("sessionId");
 
-    info("WebSocket-Server", `Upgrade request received for pathname: ${pathname}, sessionId: ${sessionId}`);
-    console.log(
-      `[${timestamp}] [WebSocket Server] Upgrade request received for pathname: ${pathname}, sessionId: ${sessionId}`
-    );
+    info("WebSocket-Server",`Upgrade request received for pathname: ${pathname}, sessionId: ${sessionId}`);
 
     if (pathname === DASHBOARD_URL) {
-      // Pass sessionId to handleUpgrade
       wss.handleUpgrade(request, socket, head, (ws) => {
-        ws.sessionId = sessionId; // Attach sessionId to WebSocket connection object
+        ws.sessionId = sessionId;
         wss.emit("connection", ws, request);
       });
     } else {
       warn("WebSocket-Server", `Invalid WebSocket path: ${pathname}`);
-      console.warn(
-        `[${timestamp}] [WebSocket Server] Invalid WebSocket path: ${pathname}`
-      );
       socket.destroy();
     }
   });
 
   wss.on("connection", (ws, request) => {
-    const timestamp = new Date().toLocaleString();
-    info("WebSocket-Server", `Client connected from: ${request.socket.remoteAddress}, sessionId: ${ws.sessionId}`);
-    console.log(
-      `[${timestamp}] [WebSocket Server] Client connected from: ${request.socket.remoteAddress}, sessionId: ${ws.sessionId}`
-    );
+    info("WebSocket-Server",`Client connected from: ${request.socket.remoteAddress}, sessionId: ${ws.sessionId}`);
 
     // Check if the session exists on connection
-    const sessionDir = path.join(authDir, `session-${ws.sessionId}`);
+    const sessionDir = path.join(BASE_DIR, "modules", "whatsapp-sessions", `session-${ws.sessionId}`);
     if (fs.existsSync(sessionDir)) {
-      info("WebSocket-Server", `Session directory found for sessionId: ${ws.sessionId}. Attempting to restore session.`);
-      console.log(
-        `[${timestamp}] [WebSocket Server] Session directory found for sessionId: ${ws.sessionId}. Attempting to restore session.`
-      );
-      // Send a session-restored event
+      info("WebSocket-Server",`Session directory found for sessionId: ${ws.sessionId}. Attempting to restore session.`);
       ws.send(JSON.stringify({ event: "session-restored", data: {} }));
     }
 
@@ -112,32 +90,28 @@ function initializeWebSocket(server) {
         event: "config",
         data: {
           wsUrl: WS_URL,
-          // Add other config values you want to send to the client here
         },
       })
     );
 
     ws.on("message", (message) => {
-      debug("WebSocket-Server", "Received message", { message: message.toString() });
-      console.log(
-        `[${new Date().toLocaleString()}] [WebSocket Server] Received message: ${message}`
-      );
+      debug("WebSocket-Server", "Received message", {
+        message: message.toString(),
+      });
       try {
         const parsedMessage = JSON.parse(message);
         if (!validatePayload(parsedMessage)) {
-          warn("WebSocket-Server", "Invalid payload received", { message: parsedMessage });
-          console.error(
-            `[${new Date().toLocaleString()}] [WebSocket Server] Invalid payload received.`
-          );
+          warn("WebSocket-Server", "Invalid payload received", {
+            message: parsedMessage,
+          });
           ws.send(JSON.stringify({ event: "error", data: "Invalid payload" }));
           return;
         }
         handleClientMessage(ws, parsedMessage);
       } catch (error) {
-        error("WebSocket-Server", "Error processing message", { error: error.message });
-        console.error(
-          `[${new Date().toLocaleString()}] [WebSocket Server] Error processing message: ${error.message}`
-        );
+        error("WebSocket-Server", "Error processing message", {
+          error: error.message,
+        });
         ws.send(
           JSON.stringify({ event: "error", data: "Failed to process message" })
         );
@@ -146,16 +120,10 @@ function initializeWebSocket(server) {
 
     ws.on("close", () => {
       info("WebSocket-Server", "Client disconnected");
-      console.log(
-        `[${new Date().toLocaleString()}] [WebSocket Server] Client disconnected`
-      );
     });
 
     ws.on("error", (error) => {
       error("WebSocket-Server", "Connection error", { error: error.message });
-      console.error(
-        `[${new Date().toLocaleString()}] [WebSocket Server] Connection error: ${error.message}`
-      );
       ws.send(JSON.stringify({ event: "error", data: "Connection error" }));
     });
 
@@ -193,13 +161,11 @@ function sendInitialStatus(ws) {
  * Handle specific client messages/commands.
  */
 async function handleClientMessage(ws, message) {
-  const timestamp = new Date().toLocaleString();
   switch (message.event) {
     case "wa-subscribe-request":
-      info("WebSocket-Server", "WhatsApp subscription request received", { sessionId: ws.sessionId });
-      console.log(
-        `[${timestamp}] [WebSocket Server] WhatsApp subscription request received. Session ID: ${ws.sessionId}`
-      );
+      info("WebSocket-Server", "WhatsApp subscription request received", {
+        sessionId: ws.sessionId,
+      });
       try {
         // Pass the sessionId to initializeWhatsApp
         await initializeWhatsApp(ws.sessionId);
@@ -208,8 +174,9 @@ async function handleClientMessage(ws, message) {
           ws.send(JSON.stringify({ event: "qr", data: qrCode }));
         }
       } catch (error) {
-        error("WebSocket-Server", "Error initializing WhatsApp", { error: error.message });
-        console.error("Error initializing WhatsApp:", error);
+        error("WebSocket-Server", "Error initializing WhatsApp", {
+          error: error.message,
+        });
         setIsSubscribing(false);
         updateConnectionState(CONNECTION_STATES.DISCONNECTED);
         ws.send(
@@ -223,19 +190,15 @@ async function handleClientMessage(ws, message) {
 
     case "wa-unsubscribe-request":
       info("WebSocket-Server", "WhatsApp unsubscription request received");
-      console.log(
-        `[${timestamp}] [WebSocket Server] WhatsApp unsubscription request received.`
-      );
       unlinkWhatsApp()
         .then(() => {
           // isSubscribed = false; // Moved to whatsapp.js on("disconnected") event
           // ws.send(JSON.stringify({ event: "wa-unsubscribed", data: { subscribed: false } })); // Moved to whatsapp.js on("disconnected") event
         })
         .catch((error) => {
-          error("WebSocket-Server", "Error unsubscribing WhatsApp", { error: error.message });
-          console.error(
-            `[${timestamp}] [WebSocket Server] Error unsubscribing WhatsApp: ${error.message}`
-          );
+          error("WebSocket-Server", "Error unsubscribing WhatsApp", {
+            error: error.message,
+          });
           ws.send(
             JSON.stringify({
               event: "error",
@@ -247,18 +210,14 @@ async function handleClientMessage(ws, message) {
 
     case "wa-connect-request":
       info("WebSocket-Server", "WhatsApp connection request received");
-      console.log(
-        `[${timestamp}] [WebSocket Server] WhatsApp connection request received.`
-      );
       connectWhatsApp()
         .then(() => {
           // ws.send(JSON.stringify({ event: "wa-connected", data: { connected: true } })); // Removed and handled in whatsapp.js
         })
         .catch((error) => {
-          error("WebSocket-Server", "Error connecting WhatsApp", { error: error.message });
-          console.error(
-            `[${timestamp}] [WebSocket Server] Error connecting WhatsApp: ${error.message}`
-          );
+          error("WebSocket-Server", "Error connecting WhatsApp", {
+            error: error.message,
+          });
           ws.send(
             JSON.stringify({
               event: "error",
@@ -270,18 +229,14 @@ async function handleClientMessage(ws, message) {
 
     case "wa-disconnect-request":
       info("WebSocket-Server", "WhatsApp disconnect request received");
-      console.log(
-        `[${timestamp}] [WebSocket Server] WhatsApp disconnect request received.`
-      );
       disconnectWhatsApp()
         .then(() => {
           // ws.send(JSON.stringify({ event: "wa-disconnected", data: { connected: false } })); // Removed and handled in whatsapp.js
         })
         .catch((error) => {
-          error("WebSocket-Server", "Error disconnecting WhatsApp", { error: error.message });
-          console.error(
-            `[${timestamp}] [WebSocket Server] Error disconnecting WhatsApp: ${error.message}`
-          );
+          error("WebSocket-Server", "Error disconnecting WhatsApp", {
+            error: error.message,
+          });
           ws.send(
             JSON.stringify({
               event: "error",
@@ -293,9 +248,6 @@ async function handleClientMessage(ws, message) {
 
     case "wa-authorize-request":
       info("WebSocket-Server", "WhatsApp authorization request received");
-      console.log(
-        `[${timestamp}] [WebSocket Server] WhatsApp authorization request received.`
-      );
       const { authorize: shouldAuthorize } = message.data;
       if (shouldAuthorize) {
         authorize(ws.sessionId)
@@ -303,10 +255,9 @@ async function handleClientMessage(ws, message) {
             // ws.send(JSON.stringify({ event: "wa-authorized", data: { authorized: true } })); // Removed and handled in whatsapp.js
           })
           .catch((error) => {
-            error("WebSocket-Server", "Error authorizing WhatsApp", { error: error.message });
-            console.error(
-              `[${timestamp}] [WebSocket Server] Error authorizing WhatsApp: ${error.message}`
-            );
+            error("WebSocket-Server", "Error authorizing WhatsApp", {
+              error: error.message,
+            });
             ws.send(
               JSON.stringify({
                 event: "error",
@@ -320,10 +271,9 @@ async function handleClientMessage(ws, message) {
             // ws.send(JSON.stringify({ event: "wa-authorized", data: { authorized: false } })); // Removed and handled in whatsapp.js
           })
           .catch((error) => {
-            error("WebSocket-Server", "Error unauthorizing WhatsApp", { error: error.message });
-            console.error(
-              `[${timestamp}] [WebSocket Server] Error unauthorizing WhatsApp: ${error.message}`
-            );
+            error("WebSocket-Server", "Error unauthorizing WhatsApp", {
+              error: error.message,
+            });
             ws.send(
               JSON.stringify({
                 event: "error",
@@ -336,9 +286,6 @@ async function handleClientMessage(ws, message) {
 
     case "wa-forwarding-request":
       info("WebSocket-Server", "WhatsApp forwarding request received");
-      console.log(
-        `[${timestamp}] [WebSocket Server] WhatsApp forwarding request received.`
-      );
       const { forwarding } = message.data;
       if (forwarding) {
         startForwarding();
@@ -349,10 +296,9 @@ async function handleClientMessage(ws, message) {
       break;
 
     default:
-      warn("WebSocket-Server", "Unknown event received", { event: message.event });
-      console.warn(
-        `[${timestamp}] [WebSocket Server] Unknown event received: ${message.event}`
-      );
+      warn("WebSocket-Server", "Unknown event received", {
+        event: message.event,
+      });
       ws.send(JSON.stringify({ event: "error", data: "Unknown event" }));
   }
 }
@@ -363,9 +309,6 @@ async function handleClientMessage(ws, message) {
 function broadcast(event, data) {
   if (!wss) {
     warn("WebSocket-Server", "Broadcast called before WebSocket initialized");
-    console.warn(
-      `[${new Date().toLocaleString()}] [WebSocket Server] Broadcast called before WebSocket initialized.`
-    );
     return;
   }
 
