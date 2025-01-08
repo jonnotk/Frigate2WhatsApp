@@ -1,0 +1,47 @@
+FRIGATE2WHATSAPP/
+│
+├── logs/
+│   └── app1.log
+│
+├── modules/
+│   ├── whatsapp-sessions/
+│   ├── api-endpoints.js
+│   ├── camera-logic.js
+│   ├── mqtt.js
+│   ├── script-manager.js
+│   ├── websocket-server.js
+│   └── whatsapp.js
+│
+├── node_modules/
+│
+├── public/
+│   ├── components/
+│   │   ├── camera-mapping.js
+│   │   ├── code-editor.js
+│   │   ├── file-editor.js
+│   │   ├── frigate-filter.js
+│   │   ├── log-display.js
+│   │   ├── qr-modal.js
+│   │   ├── script-control.js
+│   │   ├── websocket-client.js
+│   │   ├── frontend-logger.js
+│   │   └── whatsapp-connection.js
+│   │
+│   ├── app.js
+│   ├── index.html
+│   └── styles.css
+│
+├── utils/
+│   └── logger.js
+│
+├── .env
+├── .gitignore
+├── config.js
+├── constants-server.js
+├── constants.js
+├── LICENSE
+├── package.json
+├── package-lock.json
+├── README.md
+├── server.js
+└── state.js

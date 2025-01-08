@@ -1,0 +1,35 @@
+{
+  "name": "frigate2whatsapp",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Frigate2WhatsApp Project",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.7.2",
+    "chalk": "^5.3.0",
+    "dotenv": "^16.4.5",
+    "events": "^3.3.0",
+    "express": "^4.18.2",
+    "fluent-ffmpeg": "^2.1.2",
+    "mime": "^4.0.2",
+    "mime-types": "^2.1.35",
+    "mqtt": "^5.3.6",
+    "node-webpmux": "^3.1.7",
+    "qrcode": "^1.5.3",
+    "qrcode-terminal": "^0.12.0",
+    "rimraf": "^5.0.5",
+    "uuid": "^9.0.1",
+    "whatsapp-web.js": "1.26.1-alpha.3",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.24",
+    "puppeteer-core": "^21.7.0"
+  }
+}
