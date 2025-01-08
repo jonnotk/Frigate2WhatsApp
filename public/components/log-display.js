@@ -10,17 +10,6 @@ const logDisplay = {
    */
   initialize: () => {
     info("Log Display", "Initializing...");
-
-    // Load persisted logs from localStorage
-    const persistedLogs = JSON.parse(localStorage.getItem("logs") || "{}");
-    for (const containerId in persistedLogs) {
-      const logs = persistedLogs[containerId];
-      const logContainer = document.getElementById(containerId);
-      if (logContainer) {
-        logContainer.innerHTML = logs;
-      }
-    }
-
     info("Log Display", "Initialized.");
   },
 
@@ -42,11 +31,6 @@ const logDisplay = {
     logContainer.appendChild(log);
     logContainer.scrollTop = logContainer.scrollHeight;
 
-    // Persist logs in localStorage
-    const persistedLogs = JSON.parse(localStorage.getItem("logs") || "{}");
-    persistedLogs[containerId] = logContainer.innerHTML;
-    localStorage.setItem("logs", JSON.stringify(persistedLogs));
-
     // Optional: Limit the number of logs to prevent excessive growth
     const maxLogs = 500;
     while (logContainer.childNodes.length > maxLogs) {
@@ -64,11 +48,6 @@ const logDisplay = {
 
     if (logContainer) {
       logContainer.innerHTML = "";
-
-      // Remove logs from localStorage
-      const persistedLogs = JSON.parse(localStorage.getItem("logs") || "{}");
-      delete persistedLogs[containerId];
-      localStorage.setItem("logs", JSON.stringify(persistedLogs));
     } else {
       error("Log Display", `Log container not found: ${containerId}`);
     }

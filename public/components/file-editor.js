@@ -37,6 +37,7 @@ const fileEditor = {
     info("File Editor", "Initialized.");
   },
 
+  // Updated to use fetch to get file content from the server
   editFile: async (filename) => {
     info("File Editor", `Editing ${filename}...`);
 
@@ -77,6 +78,7 @@ const fileEditor = {
     }
   },
 
+  // Updated to use fetch to send updated content to the server
   saveFile: async () => {
     const filename = document.getElementById("current-file").innerText;
     const content = editor.getValue();

@@ -6,7 +6,8 @@
     <title>Frigate2WhatsApp Dashboard</title>
     <link rel="stylesheet" href="./styles.css" />
     <link rel="icon" href="./favicon.ico" type="image/x-icon" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.5.3/ace.js"
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.5.3/ace.js"
       type="text/javascript"
       charset="utf-8"
     ></script>
@@ -14,105 +15,109 @@
   </head>
   <body>
     <div class="wrapper">
-        <header class="header">
-            <h1>Frigate2WhatsApp Dashboard</h1>
-        </header>
-        <main class="main">
-            <aside class="sidebar">
-                <section class="section">
-                    <h2 class="section-title">WhatsApp Status</h2>
-                    <div class="whatsapp-fields">
-                        <p id="wa-state">State: <span id="status" class="unknown">Unknown</span></p>
-                        <p>Account: <span id="wa-account">Not Linked</span></p>
-                    </div>
-                    <div class="whatsapp-actions">
-                        <button id="authorize-button">Authorize</button>
-                        <button id="subscribe-whatsapp-button">Subscribe</button>
-                        <button id="unsubscribe-whatsapp-button">Unsubscribe</button>
-                        <button id="connect-whatsapp-button">Connect</button>
-                        <button id="disconnect-whatsapp-button">Disconnect</button>
-                    </div>
-                </section>
-                <section class="section">
-                    <h2 class="section-title">Forwarding</h2>
-                    <label for="forwarding-toggle" class="switch">
-                        <input type="checkbox" id="forwarding-toggle" disabled />
-                        <span class="slider round"></span>
-                        <span class="label">Start Forwarding</span>
-                    </label>
-                </section>
-                <section class="section">
-                    <h2 class="section-title">WhatsApp Groups</h2>
-                    <ul id="group-list"></ul>
-                </section>
-            </aside>
-
-            <section class="content">
-                <section class="section">
-                    <h2 class="section-title">Script Control</h2>
-                    <p id="script-status">Status: Unknown</p>
-                    <button id="start-script-button">Start Script</button>
-                    <button id="stop-script-button">Stop Script</button>
-                </section>
-
-                <section class="section">
-                    <h2 class="section-title">Camera Mapping</h2>
-                    <div id="camera-list"></div>
-                    <div class="refresh-button">
-                        <button id="refresh-cameras-button">Refresh Cameras</button>
-                    </div>
-                </section>
-
-                <section class="section">
-                  <h2 class="section-title">Logs</h2>
-                  <div id="log-container-frigate">
-                    <h3>Frigate2Whats Logs</h3>
-                    <div id="log-container" class="log-output">
-                      <p>Logs will appear here...</p>
-                    </div>
-                    <button id="export-logs-button">Export Logs</button>
-                  </div>
-                  <div id="log-container-serverjs">
-                    <h3>Server.js Logs</h3>
-                    <div id="log-container-server" class="log-output">
-                      <p>Logs will appear here...</p>
-                    </div>
-                    <button id="export-server-logs-button">Export Logs</button>
-                  </div>
-                </section>
-
-                <section class="section">
-                    <h2 class="section-title">Code Editor</h2>
-                    <div class="button-container" id="code-editor-section">
-                        <button class="file-edit-button" id="edit-index-button">Edit index.html</button>
-                        <button class="file-edit-button" id="edit-server-button">Edit server.js</button>
-                        <button class="file-edit-button" id="edit-whatsapp-button">Edit whatsapp.js</button>
-                    </div>
-                    <div id="code-editor"></div>
-                </section>
-            </section>
-        </main>
-
-        <div id="qr-modal" class="modal">
-            <div class="modal-content">
-                <span class="close-button" id="close-qr-button">&times;</span>
-                <div id="qr-image"></div>
+      <header class="header">
+        <h1>Frigate2WhatsApp Dashboard</h1>
+      </header>
+      <main class="main">
+        <aside class="sidebar">
+          <section class="section">
+            <h2 class="section-title">WhatsApp Status</h2>
+            <div class="whatsapp-fields">
+              <p id="wa-state">
+                State: <span id="status" class="unknown">Unknown</span>
+              </p>
+              <p>Account: <span id="wa-account">Not Linked</span></p>
             </div>
-        </div>
-
-        <div id="editor-modal" class="modal">
-            <div class="modal-content">
-                <span class="close-button" id="close-editor-button">&times;</span>
-                <h2>Edit <span id="current-file"></span></h2>
-                <div id="editor" style="height: 400px; width: 100%;"></div>
-                <button id="save-file-button">Save</button>
-                <button id="cancel-editor-button">Cancel</button>
+            <div class="whatsapp-actions">
+              <button id="authorize-button">Authorize</button>
             </div>
+          </section>
+          <section class="section">
+            <h2 class="section-title">Forwarding</h2>
+            <label for="forwarding-toggle" class="switch">
+              <input type="checkbox" id="forwarding-toggle" disabled />
+              <span class="slider round"></span>
+              <span class="label">Start Forwarding</span>
+            </label>
+          </section>
+          <section class="section">
+            <h2 class="section-title">WhatsApp Groups</h2>
+            <ul id="group-list"></ul>
+          </section>
+        </aside>
+
+        <section class="content">
+          <section class="section">
+            <h2 class="section-title">Script Control</h2>
+            <p id="script-status">Status: Unknown</p>
+            <button id="start-script-button">Start Script</button>
+            <button id="stop-script-button">Stop Script</button>
+          </section>
+
+          <section class="section">
+            <h2 class="section-title">Camera Mapping</h2>
+            <div id="camera-list"></div>
+            <div class="refresh-button">
+              <button id="refresh-cameras-button">Refresh Cameras</button>
+            </div>
+          </section>
+
+          <section class="section">
+            <h2 class="section-title">Logs</h2>
+            <div id="log-container-frigate">
+              <h3>Frigate2Whats Logs</h3>
+              <div id="log-container" class="log-output">
+                <p>Logs will appear here...</p>
+              </div>
+              <button id="export-logs-button">Export Logs</button>
+            </div>
+            <div id="log-container-serverjs">
+              <h3>Server.js Logs</h3>
+              <div id="log-container-server" class="log-output">
+                <p>Logs will appear here...</p>
+              </div>
+              <button id="export-server-logs-button">Export Logs</button>
+            </div>
+          </section>
+
+          <section class="section">
+            <h2 class="section-title">Code Editor</h2>
+            <div class="button-container" id="code-editor-section">
+              <button class="file-edit-button" id="edit-index-button">
+                Edit index.html
+              </button>
+              <button class="file-edit-button" id="edit-server-button">
+                Edit server.js
+              </button>
+              <button class="file-edit-button" id="edit-whatsapp-button">
+                Edit whatsapp.js
+              </button>
+            </div>
+            <div id="code-editor"></div>
+          </section>
+        </section>
+      </main>
+
+      <div id="qr-modal" class="modal">
+        <div class="modal-content">
+          <span class="close-button" id="close-qr-button">&times;</span>
+          <div id="qr-image"></div>
         </div>
+      </div>
+
+      <div id="editor-modal" class="modal">
+        <div class="modal-content">
+          <span class="close-button" id="close-editor-button">&times;</span>
+          <h2>Edit <span id="current-file"></span></h2>
+          <div id="editor" style="height: 400px; width: 100%;"></div>
+          <button id="save-file-button">Save</button>
+          <button id="cancel-editor-button">Cancel</button>
+        </div>
+      </div>
     </div>
     <script type="module">
-        import { initializeSocket } from "./components/websocket-client.js";
-        initializeSocket();
+      import { initializeSocket } from "./components/websocket-client.js";
+      initializeSocket();
     </script>
     <script type="module" src="./app.js"></script>
   </body>

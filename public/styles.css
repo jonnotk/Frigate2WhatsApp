@@ -82,7 +82,8 @@ h1 {
   color: red;
 }
 
-.whatsapp-fields .connecting, .whatsapp-fields .awaiting_qr {
+.whatsapp-fields .connecting,
+.whatsapp-fields .awaiting_qr {
   color: orange;
 }
 
@@ -104,6 +105,7 @@ h1 {
   align-items: flex-start;
 }
 
+/*updated*/
 .whatsapp-actions button {
   margin-bottom: 10px;
   padding: 8px 16px;
@@ -114,6 +116,7 @@ h1 {
   font-size: 1rem;
   cursor: pointer;
   transition: background-color 0.3s ease;
+  width: 100%;
 }
 
 .whatsapp-actions button:hover {
