@@ -5,8 +5,8 @@ import { logDisplay } from "./log-display.js";
 import {
   getCameras,
   getIsSubscribed,
-  getIsSubscribing,
   setIsSubscribed,
+  getIsSubscribing,
   setIsSubscribing,
   getWaConnected,
   setWaConnected,
@@ -17,9 +17,7 @@ import {
   initWhatsAppConnection,
   handleWhatsAppMessage,
   updateStatusUI,
-  updateForwardingStatus,
 } from "./whatsapp-connection.js";
-import { CONNECTION_STATES } from "../constants.js";
 import { setupLogging } from "../utils/logger.js";
 
 // Initialize logging
@@ -59,7 +57,7 @@ async function initializeSocket() {
 
 function connectWebSocket(sessionId) {
   // Construct the WebSocket URL with the session ID as a query parameter
-  const fullWsUrl = `${wsUrl}?sessionId=${sessionId}`;
+  const fullWsUrl = `<span class="math-inline">\{wsUrl\}?sessionId\=</span>{sessionId}`;
   info("WebSocket-Client", `WebSocket URL set to: ${fullWsUrl}`);
 
   // Create WebSocket connection to the server
@@ -247,149 +245,155 @@ function handleWebSocketMessage(message) {
     case "wa-connected":
       setWaConnected(true);
       info("WebSocket-Client", "WhatsApp connected.");
-      updateStatusUI(CONNECTION_STATES.CONNECTED);
+      updateStatusUI("connected");
       break;
 
     case "wa-disconnected":
       setWaConnected(false);
       info("WebSocket-Client", "WhatsApp disconnected.");
-      updateStatusUI(CONNECTION_STATES.DISCONNECTED);
+      updateStatusUI("disconnected");
       break;
 
     case "wa-authorized":
       info("WebSocket-Client",`WhatsApp authorization status updated: ${message.data.authorized}`);
       if (message.data.authorized) {
-        updateStatusUI(CONNECTION_STATES.CONNECTED);
+        updateStatusUI("connected");
       } else {
-        updateStatusUI(CONNECTION_STATES.DISCONNECTED);
+        updateStatusUI("disconnected");
       }
       break;
 
-    case "wa-forwarding":
-      info("WebSocket-Client",`WhatsApp forwarding status updated: ${message.data.forwarding}`);
-      updateForwardingStatus(message.data.forwarding);
-      break;
-
-    case "connection-state":
-      info("WebSocket-Client",`WhatsApp connection state updated: ${message.data}`);
-      updateStatusUI(message.data.state);
-      break;
-
-    case "wa-error":
-      error("WebSocket-Client",`WhatsApp error: ${message.data.message}`);
+      case "connection-state":
+        info("WebSocket-Client",`WhatsApp connection state updated: ${message.data}`);
+        updateStatusUI(message.data.state);
+        break;
+  
+      case "wa-error":
+        error("WebSocket-Client",`WhatsApp error: ${message.data.message}`);
+        logDisplay.appendLog(
+          "log-container-server",
+          `[WebSocket Client] WhatsApp error: ${message.data.message}`
+        );
+        break;
+  
+      case "initial-status":
+        info("WebSocket-Client",`Initial status received: ${message.data}`);
+        updateWhatsAppStatus(message.data.connected);
+        setWaAccount(message.data.account);
+        updateStatusUI(message.data.state);
+        setIsSubscribed(message.data.subscribed);
+        break;
+  
+      case "wa-groups":
+        info("WebSocket-Client",`WhatsApp groups updated: ${message.data}`);
+        updateGroupList(message.data);
+        break;
+  
+      case "wa-authorizing":
+        info("WebSocket-Client",`WhatsApp authorizing: ${message.data.authorizing}`);
+        updateStatusUI("awaiting_qr"); // Update button to "Awaiting QR"
+        break;
+  
+      case "session-restored":
+        info("WebSocket-Client",`Session restored.`);
+        fetchInitialStatuses(); // Re-fetch initial statuses after restoring a session
+        break;
+  
+      case "config":
+        info("WebSocket-Client",`Config received:`, message.data);
+        wsUrl = message.data.wsUrl; // Update wsUrl
+        initializeSocket(); // reconnect with the correct URL
+        break;
+  
+      case "camera-group-updated":
+        info("WebSocket-Client", `Camera group mapping updated: ${message.data}`);
+        cameraMapping.loadCameras(); // Refresh the camera list
+        break;
+  
+      default:
+        warn("WebSocket-Client",`Unknown event received: ${message.event}`);
+        logDisplay.appendLog(
+          "log-container-server",
+          `[WebSocket Client] Unknown event: ${message.event}`
+        );
+        break;
+    }
+  }
+  /**
+   * Updates the WhatsApp connection status in the UI.
+   * @param {boolean} connected - WhatsApp connection status.
+   */
+  function updateWhatsAppStatus(connected) {
+    const statusElement = document.getElementById("wa-status-value");
+    if (statusElement) {
+      statusElement.textContent = `${connected ? "Connected" : "Disconnected"}`;
+      statusElement.className = connected ? "connected" : "disconnected";
+      info("WebSocket-Client",`WhatsApp status updated in UI: ${connected ? "Connected" : "Disconnected"}`);
+    } else {
+      error("WebSocket-Client",
+        `WhatsApp status element not found in UI.`
+      );
       logDisplay.appendLog(
         "log-container-server",
-        `[WebSocket Client] WhatsApp error: ${message.data.message}`
+        `WhatsApp status element not found in UI.`
       );
-      break;
-
-    case "initial-status":
-      info("WebSocket-Client",`Initial status received: ${message.data}`);
-      updateWhatsAppStatus(message.data.connected);
-      setWaAccount(message.data.account);
-      updateStatusUI(message.data.state);
-      setIsSubscribed(message.data.subscribed);
-      break;
-
-    case "wa-groups":
-      info("WebSocket-Client",`WhatsApp groups updated: ${message.data}`);
-      updateGroupList(message.data);
-      break;
-
-    case "wa-authorizing":
-      info("WebSocket-Client",`WhatsApp authorizing: ${message.data.authorizing}`);
-      updateStatusUI(CONNECTION_STATES.AWAITING_QR); // Update button to "Awaiting QR"
-      break;
-
-    case "session-restored":
-      info("WebSocket-Client",`Session restored.`);
-      fetchInitialStatuses(); // Re-fetch initial statuses after restoring a session
-      break;
-
-    case "config":
-      info("WebSocket-Client",`Config received:`, message.data);
-      wsUrl = message.data.wsUrl; // Update wsUrl
-      initializeSocket(); // reconnect with the correct URL
-      break;
-
-    default:
-      warn("WebSocket-Client",`Unknown event received: ${message.event}`);
+    }
+  }
+  
+  /**
+   * Updates the script running status in the UI.
+   * @param {boolean} running - Script running status.
+   */
+  function updateScriptStatus(running) {
+    const scriptElement = document.getElementById("script-status");
+    if (scriptElement) {
+      scriptElement.textContent = `Script: ${running ? "Running" : "Stopped"}`;
+      info("WebSocket-Client",`Script status updated in UI: ${running ? "Running" : "Stopped"}`);
+    } else {
+      error("WebSocket-Client",
+        `Script status element not found in UI.`
+      );
       logDisplay.appendLog(
         "log-container-server",
-        `[WebSocket Client] Unknown event: ${message.event}`
+        `Script status element not found in UI.`
       );
-      break;
+    }
   }
-}
-/**
- * Updates the WhatsApp connection status in the UI.
- * @param {boolean} connected - WhatsApp connection status.
- */
-function updateWhatsAppStatus(connected) {
-  const statusElement = document.getElementById("wa-status-value");
-  if (statusElement) {
-    statusElement.textContent = `${connected ? "Connected" : "Disconnected"}`;
-    statusElement.className = connected ? "connected" : "disconnected";
-    info("WebSocket-Client",`WhatsApp status updated in UI: ${connected ? "Connected" : "Disconnected"}`);
-  } else {
-    error("WebSocket-Client",`WhatsApp status element not found in UI.`);
-    logDisplay.appendLog(
-      "log-container-server",
-      `WhatsApp status element not found in UI.`
-    );
+  
+  /**
+   * Updates the group list in the UI with the provided groups data.
+   * @param {Array} groups - Array of group objects with 'id' and 'name' properties.
+   */
+  function updateGroupList(groups) {
+    const groupListElement = document.getElementById("group-list");
+  
+    if (groupListElement) {
+      groupListElement.innerHTML = ""; // Clear existing list
+  
+      groups.forEach((group) => {
+        const listItem = document.createElement("li");
+        listItem.textContent = group.name;
+        groupListElement.appendChild(listItem);
+      });
+  
+      info("WebSocket-Client",`Group list updated in UI.`);
+    } else {
+      error("WebSocket-Client",
+        `Group list element not found in UI.`
+      );
+      logDisplay.appendLog(
+        "log-container-server",
+        "Group list element not found in UI."
+      );
+    }
   }
-}
-
-/**
- * Updates the script running status in the UI.
- * @param {boolean} running - Script running status.
- */
-function updateScriptStatus(running) {
-  const scriptElement = document.getElementById("script-status");
-  if (scriptElement) {
-    scriptElement.textContent = `Script: ${running ? "Running" : "Stopped"}`;
-    info("WebSocket-Client",`Script status updated in UI: ${running ? "Running" : "Stopped"}`);
-  } else {
-    error("WebSocket-Client",`Script status element not found in UI.`);
-    logDisplay.appendLog(
-      "log-container-server",
-      `Script status element not found in UI.`
-    );
+  
+  /**
+   * Generate a unique session ID.
+   */
+  function generateSessionId() {
+    // Simple example using Math.random (not cryptographically secure)
+    return "s" + Math.random().toString(36).substring(2, 15);
   }
-}
-
-/**
- * Updates the group list in the UI with the provided groups data.
- * @param {Array} groups - Array of group objects with 'id' and 'name' properties.
- */
-function updateGroupList(groups) {
-  const groupListElement = document.getElementById("group-list");
-
-  if (groupListElement) {
-    groupListElement.innerHTML = ""; // Clear existing list
-
-    groups.forEach((group) => {
-      const listItem = document.createElement("li");
-      listItem.textContent = group.name;
-      groupListElement.appendChild(listItem);
-    });
-
-    info("WebSocket-Client",`Group list updated in UI.`);
-  } else {
-    error("WebSocket-Client",`Group list element not found in UI.`);
-    logDisplay.appendLog(
-      "log-container-server",
-      "Group list element not found in UI."
-    );
-  }
-}
-
-/**
- * Generate a unique session ID.
- */
-function generateSessionId() {
-  // Simple example using Math.random (not cryptographically secure)
-  return "s" + Math.random().toString(36).substring(2, 15);
-}
-
-export { initializeSocket };
+  
+  export { initializeSocket };

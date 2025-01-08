@@ -1,12 +1,7 @@
 // public/components/camera-mapping.js
 import { logDisplay } from "./log-display.js";
-import {
-  getCameras,
-  getCameraGroupMappings,
-  setCameraGroupMappings,
-} from "../../state.js";
+import { getCameras } from "../../state.js";
 import { setupLogging } from "../../utils/logger.js";
-import { addCamera, assignCameraToGroup } from "../../modules/camera-logic.js";
 
 // Initialize logging
 const { info, warn, error } = setupLogging();
@@ -136,28 +131,11 @@ const cameraMapping = {
     groupSelect.addEventListener("change", async () => {
         const selectedGroup = groupSelect.value;
         info("Camera Mapping",`Group changed for camera: ${camera}, Selected group: ${selectedGroup}`);
-  
-        try {
-          const response = await fetch("/api/assign-camera", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ camera, group: selectedGroup }),
-          });
-  
-          if (!response.ok) {
-            const errorData = await response.json();
-            error("Camera Mapping", "Error assigning camera to group:", errorData);
-            logDisplay.appendLog("log-container-server",`Error assigning camera ${camera} to group: ${errorData.error}`);
-            return;
-          }
-  
-          info("Camera Mapping",`Camera ${camera} assigned to group ${selectedGroup}`);
-          logDisplay.appendLog("log-container",`Camera ${camera} assigned to group ${selectedGroup}.`);
-        } catch (errorData) {
-          error("Camera Mapping", "Error during group assignment:", errorData);
-          logDisplay.appendLog("log-container-server",`Error assigning camera ${camera} to group: ${errorData.message}`);
-        }
-      });
+        window.ws.send(JSON.stringify({
+            event: "assign-camera-to-group",
+            data: { camera: camera, group: selectedGroup }
+        }));
+    });
 
     cameraItem.appendChild(cameraName);
     cameraItem.appendChild(groupSelect);

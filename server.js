@@ -33,9 +33,10 @@ app.use((req, res, next) => {
 });
 
 // Serve Static Files
-app.use(express.static(path.join(BASE_DIR, "public")));
-app.use(COMPONENTS_URL, express.static(path.join(BASE_DIR, "public", "components")));
-app.use(LOGS_DIR, express.static(path.join(BASE_DIR, "logs")));
+app.use(express.static(path.join(BASE_DIR, "public"))); // Serve from 'public'
+app.use('/components', express.static(path.join(BASE_DIR, "public", "components"))); // Serve components correctly
+app.use('/utils', express.static(path.join(BASE_DIR, "utils"))); // Serve utils correctly
+app.use('/modules', express.static(path.join(BASE_DIR, "modules"))); // Serve utils correctly
 
 // Serve state.js from the root directory
 app.use("/state.js", express.static(path.join(BASE_DIR, "state.js")));

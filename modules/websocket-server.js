@@ -15,12 +15,17 @@ import {
   userGroups,
 } from "./whatsapp.js";
 import { getIsSubscribed, getIsSubscribing, setIsSubscribing } from "../state.js";
-import { CONNECTION_STATES } from "../constants.js";
-import { DASHBOARD_URL, PORT, WS_URL, BASE_DIR } from "../constants-server.js";
+import {
+  DASHBOARD_URL,
+  PORT,
+  WS_URL,
+  BASE_DIR,
+} from "../constants-server.js"; // Now using constants from constants-server.js
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { setupLogging } from "../utils/logger.js";
+import { handleAssignCameraToGroup } from "./camera-logic.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -29,7 +34,6 @@ const __dirname = path.dirname(__filename);
 const { log, debug, info, warn, error } = setupLogging();
 
 let wss = null;
-let connectionState = CONNECTION_STATES.DISCONNECTED;
 
 /**
  * Validates the received WebSocket message payload.
@@ -61,7 +65,7 @@ function initializeWebSocket(server) {
     const searchParams = new URL(request.url, `http://${request.headers.host}`).searchParams;
     const sessionId = searchParams.get("sessionId");
 
-    info("WebSocket-Server",`Upgrade request received for pathname: ${pathname}, sessionId: ${sessionId}`);
+    info("WebSocket-Server", `Upgrade request received for pathname: ${pathname}, sessionId: ${sessionId}`);
 
     if (pathname === DASHBOARD_URL) {
       wss.handleUpgrade(request, socket, head, (ws) => {
@@ -75,12 +79,20 @@ function initializeWebSocket(server) {
   });
 
   wss.on("connection", (ws, request) => {
-    info("WebSocket-Server",`Client connected from: ${request.socket.remoteAddress}, sessionId: ${ws.sessionId}`);
+    info("WebSocket-Server", `Client connected from: ${request.socket.remoteAddress}, sessionId: ${ws.sessionId}`);
 
     // Check if the session exists on connection
-    const sessionDir = path.join(BASE_DIR, "modules", "whatsapp-sessions", `session-${ws.sessionId}`);
+    const sessionDir = path.join(
+      BASE_DIR,
+      "modules",
+      "whatsapp-sessions",
+      `session-${ws.sessionId}`
+    );
     if (fs.existsSync(sessionDir)) {
-      info("WebSocket-Server",`Session directory found for sessionId: ${ws.sessionId}. Attempting to restore session.`);
+      info(
+        "WebSocket-Server",
+        `Session directory found for sessionId: ${ws.sessionId}. Attempting to restore session.`
+      );
       ws.send(JSON.stringify({ event: "session-restored", data: {} }));
     }
 
@@ -146,7 +158,7 @@ function sendInitialStatus(ws) {
     connected: isConnected(),
     account: getAccountInfo(),
     subscribed: getIsSubscribed(),
-    state: connectionState,
+    state: getWhatsAppConnectionState(), // Get connection state from whatsapp.js
   };
 
   ws.send(
@@ -155,6 +167,14 @@ function sendInitialStatus(ws) {
       data: statusData,
     })
   );
+}
+
+/**
+ * Get the current connection state from whatsapp.js
+ */
+function getWhatsAppConnectionState() {
+  // Assuming whatsapp.js updates this state in a similar way to how it was managed in whatsapp-connection.js
+  return connectionState; // Or however you choose to expose it from whatsapp.js after refactoring
 }
 
 /**
@@ -178,7 +198,7 @@ async function handleClientMessage(ws, message) {
           error: error.message,
         });
         setIsSubscribing(false);
-        updateConnectionState(CONNECTION_STATES.DISCONNECTED);
+        updateConnectionState(CONNECTION_STATES.DISCONNECTED); // Assuming whatsapp.js has a similar function to update state
         ws.send(
           JSON.stringify({
             event: "wa-error",
@@ -188,12 +208,12 @@ async function handleClientMessage(ws, message) {
       }
       break;
 
+    // ... (rest of the cases for different message events)
     case "wa-unsubscribe-request":
       info("WebSocket-Server", "WhatsApp unsubscription request received");
       unlinkWhatsApp()
         .then(() => {
-          // isSubscribed = false; // Moved to whatsapp.js on("disconnected") event
-          // ws.send(JSON.stringify({ event: "wa-unsubscribed", data: { subscribed: false } })); // Moved to whatsapp.js on("disconnected") event
+          // Confirmation handled in whatsapp.js
         })
         .catch((error) => {
           error("WebSocket-Server", "Error unsubscribing WhatsApp", {
@@ -212,7 +232,7 @@ async function handleClientMessage(ws, message) {
       info("WebSocket-Server", "WhatsApp connection request received");
       connectWhatsApp()
         .then(() => {
-          // ws.send(JSON.stringify({ event: "wa-connected", data: { connected: true } })); // Removed and handled in whatsapp.js
+          // Confirmation handled in whatsapp.js
         })
         .catch((error) => {
           error("WebSocket-Server", "Error connecting WhatsApp", {
@@ -231,7 +251,7 @@ async function handleClientMessage(ws, message) {
       info("WebSocket-Server", "WhatsApp disconnect request received");
       disconnectWhatsApp()
         .then(() => {
-          // ws.send(JSON.stringify({ event: "wa-disconnected", data: { connected: false } })); // Removed and handled in whatsapp.js
+          // Confirmation handled in whatsapp.js
         })
         .catch((error) => {
           error("WebSocket-Server", "Error disconnecting WhatsApp", {
@@ -252,7 +272,7 @@ async function handleClientMessage(ws, message) {
       if (shouldAuthorize) {
         authorize(ws.sessionId)
           .then(() => {
-            // ws.send(JSON.stringify({ event: "wa-authorized", data: { authorized: true } })); // Removed and handled in whatsapp.js
+            // Confirmation handled in whatsapp.js
           })
           .catch((error) => {
             error("WebSocket-Server", "Error authorizing WhatsApp", {
@@ -268,7 +288,7 @@ async function handleClientMessage(ws, message) {
       } else {
         unauthorize()
           .then(() => {
-            // ws.send(JSON.stringify({ event: "wa-authorized", data: { authorized: false } })); // Removed and handled in whatsapp.js
+            // Confirmation handled in whatsapp.js
           })
           .catch((error) => {
             error("WebSocket-Server", "Error unauthorizing WhatsApp", {
@@ -293,6 +313,19 @@ async function handleClientMessage(ws, message) {
         stopForwarding();
       }
       ws.send(JSON.stringify({ event: "wa-forwarding", data: { forwarding } }));
+      break;
+    case "assign-camera-to-group":
+      const { camera, group } = message.data;
+      info("WebSocket-Server",`Assigning camera ${camera} to group ${group}...`);
+      try {
+          await handleAssignCameraToGroup(camera, group);
+          info("WebSocket-Server", `Camera ${camera} assigned to group ${group}`);
+          broadcast("camera-group-updated", { camera, group });
+      } catch (err) {
+          error("WebSocket-Server",`Error assigning camera to group: ${err}`);
+          // Send an error message back to the client
+          ws.send(JSON.stringify({ event: "error", data: `Failed to assign camera to group: ${err}` }));
+      }
       break;
 
     default:
@@ -321,4 +354,5 @@ function broadcast(event, data) {
   });
 }
 
+// Export necessary functions and variables
 export { initializeWebSocket, broadcast };

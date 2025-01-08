@@ -9,7 +9,6 @@ import {
   setWaConnected,
 } from "../state.js";
 import { showQRModal } from "./qr-modal.js";
-import { CONNECTION_STATES } from "../constants.js";
 import { setupLogging } from "../utils/logger.js";
 
 // Initialize logging
