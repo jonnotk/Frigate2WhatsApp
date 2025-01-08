@@ -38,10 +38,7 @@ FRIGATE2WHATSAPP/
 ├── .gitignore
 ├── config.js
 ├── constants-server.js
-├── constants.js
-├── LICENSE
 ├── package.json
-├── package-lock.json
 ├── README.md
 ├── server.js
 └── state.js
