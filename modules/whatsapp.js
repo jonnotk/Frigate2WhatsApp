@@ -27,28 +27,28 @@ import { removeSession } from "./whatsapp-session-manager.js";
 // Initialize logging
 const { info, warn, error, debug } = setupLogging();
 
-// Define CONNECTION_STATES within whatsapp.js (Option 1 in the previous explanation)
+// Define CONNECTION_STATES within whatsapp.js
 const CONNECTION_STATES = {
-    INITIALIZING: "initializing",
-    QR_RECEIVED: "qr_received",
-    AWAITING_QR: "awaiting_qr",
-    LOADING: "loading",
-    FAILED_RESTORE: "failed_restore",
-    TIMEOUT: "timeout",
-    CONNECTED: "connected",
-    AUTHENTICATED: "authenticated",
-    DISCONNECTED: "disconnected",
-    AUTH_FAILURE: "auth_failure",
-    INITIALIZATION_FAILED: "initialization_failed",
-    DESTROYED: "destroyed",
-    CONFLICT: "conflict",
-    UNLAUNCHED: "unlaunched",
-    UNPAIRED: "unpaired",
-    UNPAIRED_IDLE: "unpaired_idle",
-    NOT_READY: "not_ready",
-    PROXY_ERROR: "proxy_error",
-    SUBSCRIBING: "subscribing",
-    UNSUBSCRIBING: "unsubscribing"
+  INITIALIZING: "initializing",
+  QR_RECEIVED: "qr_received",
+  AWAITING_QR: "awaiting_qr",
+  LOADING: "loading",
+  FAILED_RESTORE: "failed_restore",
+  TIMEOUT: "timeout",
+  CONNECTED: "connected",
+  AUTHENTICATED: "authenticated",
+  DISCONNECTED: "disconnected",
+  AUTH_FAILURE: "auth_failure",
+  INITIALIZATION_FAILED: "initialization_failed",
+  DESTROYED: "destroyed",
+  CONFLICT: "conflict",
+  UNLAUNCHED: "unlaunched",
+  UNPAIRED: "unpaired",
+  UNPAIRED_IDLE: "unpaired_idle",
+  NOT_READY: "not_ready",
+  PROXY_ERROR: "proxy_error",
+  SUBSCRIBING: "subscribing",
+  UNSUBSCRIBING: "unsubscribing",
 };
 
 // Global variables
@@ -63,19 +63,17 @@ let groupPollingInterval = null;
 // Global variable to store the user's groups (accessible to other modules)
 let userGroups = [];
 
-let connectionState = "disconnected"; // Initialize connectionState
-
-function updateConnectionState(newState) {
-  connectionState = newState; // Update connectionState
-  info("WhatsApp-Connection", `Connection state updated: ${newState}`);
-}
-
+// Track the last connection state and broadcast time
+let lastConnectionState = null;
+let lastBroadcastTime = 0;
+const BROADCAST_THROTTLE_MS = 1000; // Throttle broadcasts to once per second
 
 /**
  * Updates the connection state and broadcasts it to the frontend.
  * @param {string} state - The new connection state.
  */
 function updateConnectionState(state) {
+  // Validate the new state
   if (!Object.values(CONNECTION_STATES).includes(state)) {
     const errorMessage = `Unknown connection state received: ${state}`;
     error("WhatsApp", errorMessage);
@@ -83,9 +81,19 @@ function updateConnectionState(state) {
     return;
   }
 
-  connectionState = state;
-  info("WhatsApp", `Connection state updated: ${state}`);
-  broadcast("connection-state", { state });
+  // Only update and broadcast if the state has changed
+  if (state !== lastConnectionState) {
+    connectionState = state;
+    lastConnectionState = state; // Update the last known state
+    info("WhatsApp", `Connection state updated: ${state}`);
+
+    // Throttle broadcasts to avoid rapid-fire updates
+    const now = Date.now();
+    if (now - lastBroadcastTime >= BROADCAST_THROTTLE_MS) {
+      broadcast("connection-state", { state });
+      lastBroadcastTime = now; // Update the last broadcast time
+    }
+  }
 }
 
 /**
@@ -143,7 +151,7 @@ async function initializeWhatsApp(sessionId) {
         "--use-mock-keychain",
       ],
       executablePath: CHROMIUM_PATH,
-      dumpio: true, //remove in prod
+      dumpio: true, // Remove in production
     },
   });
 
@@ -182,7 +190,6 @@ async function initializeWhatsApp(sessionId) {
     startGroupPolling();
   });
 
-  // added for updating wa-account number and name if number is edited in whatsapp
   waClient.on("contact_changed", async (message, oldId, newId, isContact) => {
     /**
      * Emitted when a contact is changed.

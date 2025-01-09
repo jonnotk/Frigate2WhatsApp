@@ -29,6 +29,17 @@ let WS_BASE_URL = null;
 let socket = null;
 let wsUrl = null;
 
+// Track reconnection attempts and initial status fetching
+let reconnectionAttempts = 0; // Track reconnection attempts
+const MAX_RECONNECTION_ATTEMPTS = 5; // Maximum number of reconnection attempts
+const RECONNECTION_BACKOFF = 5000; // Initial delay between reconnection attempts (5 seconds)
+let isInitialStatusFetched = false; // Flag to track if initial statuses have been fetched
+let isReconnecting = false; // Flag to track if a reconnection is in progress
+
+// Track the last received QR code
+let lastQrCode = null;
+const QR_UPDATE_THROTTLE_MS = 1000; // Throttle QR code updates to once per second
+
 async function initializeSocket() {
   try {
     // Fetch WebSocket URL from the server
@@ -81,8 +92,17 @@ function connectWebSocket(sessionId) {
       "log-container-server",
       "[WebSocket Client] Connected to server."
     );
-    // Fetch initial statuses after connection
-    fetchInitialStatuses();
+
+    // Reset reconnection attempts on successful connection
+    reconnectionAttempts = 0;
+    isReconnecting = false;
+
+    // Fetch initial statuses only if they haven't been fetched yet
+    if (!isInitialStatusFetched) {
+      fetchInitialStatuses();
+      isInitialStatusFetched = true; // Mark initial statuses as fetched
+    }
+
     // Initialize WhatsApp Connection after WebSocket is established
     setTimeout(() => {
       initWhatsAppConnection();
@@ -116,88 +136,37 @@ function connectWebSocket(sessionId) {
 
   // Event: Connection closed
   socket.onclose = () => {
-    warn("WebSocket-Client", `[WebSocket Client] Connection closed. Reconnecting in 5 seconds...`);
+    if (isReconnecting) {
+      return; // Skip if already reconnecting
+    }
+
+    isReconnecting = true;
+    reconnectionAttempts++;
+    if (reconnectionAttempts > MAX_RECONNECTION_ATTEMPTS) {
+      error("WebSocket-Client", "Maximum reconnection attempts reached. Stopping reconnection.");
+      logDisplay.appendLog(
+        "log-container-server",
+        "[WebSocket Client] Maximum reconnection attempts reached. Stopping reconnection."
+      );
+      return;
+    }
+
+    const delay = RECONNECTION_BACKOFF * reconnectionAttempts; // Exponential backoff
+    warn("WebSocket-Client", `[WebSocket Client] Connection closed. Reconnecting in ${delay / 1000} seconds...`);
     logDisplay.appendLog(
       "log-container-server",
-      "[WebSocket Client] Connection closed. Reconnecting in 5 seconds..."
+      `[WebSocket Client] Connection closed. Reconnecting in ${delay / 1000} seconds...`
     );
-    setTimeout(initializeSocket, 5000); // Retry connection after 5 seconds
+
+    // Reset the initial status flag on reconnection
+    isInitialStatusFetched = false;
+
+    // Retry connection after delay
+    setTimeout(() => {
+      isReconnecting = false;
+      initializeSocket();
+    }, delay);
   };
-}
-
-/**
- * Fetch initial statuses for WhatsApp and script.
- */
-async function fetchInitialStatuses() {
-  // Fetch WhatsApp status
-  try {
-    const waStatusResponse = await fetch("/api/wa/status");
-    const waStatusData = await waStatusResponse.json();
-
-    if (waStatusData.success) {
-      info("WebSocket-Client", `Initial WhatsApp status: ${waStatusData.data}`);
-      updateWhatsAppStatus(waStatusData.data.connected);
-      setWaAccount(waStatusData.data.account);
-
-      // Check and update waConnected based on the fetched status
-      if (waStatusData.data.connected) {
-        setWaConnected(true);
-      } else {
-        setWaConnected(false);
-      }
-
-      // Update connection state only if wa-status is successfully fetched
-      if (waStatusData.data && waStatusData.data.state) {
-        updateStatusUI(waStatusData.data.state);
-      }
-
-      // Explicitly check subscription status
-      const subscriptionResponse = await fetch("/api/wa/subscription-status");
-      const subscriptionData = await subscriptionResponse.json();
-
-      if (subscriptionData.success) {
-        setIsSubscribed(subscriptionData.data.subscribed);
-        info("WebSocket-Client", `Subscription status updated to: ${subscriptionData.data.subscribed}`);
-      } else {
-        warn("WebSocket-Client", `Failed to fetch subscription status: ${subscriptionData.error}`);
-      }
-    } else {
-      warn("WebSocket-Client", `Failed to fetch WhatsApp status: ${waStatusData.error}`);
-      logDisplay.appendLog(
-        "log-container-server",
-        `Failed to fetch WhatsApp status: ${waStatusData.error}`
-      );
-    }
-  } catch (errorData) {
-    error("WebSocket-Client", `Error fetching WhatsApp status: ${errorData}`);
-    logDisplay.appendLog(
-      "log-container-server",
-      `Error fetching WhatsApp status: ${errorData.message}`
-    );
-  }
-
-  // Fetch script status
-  try {
-    const scriptStatusResponse = await fetch("/api/script/status");
-    const scriptStatusData = await scriptStatusResponse.json();
-
-    if (scriptStatusData.success) {
-      info("WebSocket-Client", `Initial script status: ${scriptStatusData.data}`);
-      updateScriptStatus(scriptStatusData.data.running);
-    } else {
-      warn("WebSocket-Client", `Failed to fetch script status: ${scriptStatusData.error}`);
-      logDisplay.appendLog(
-        "log-container-server",
-        `Failed to fetch script status: ${scriptStatusData.error}`
-      );
-    }
-  } catch (errorData) {
-    error("WebSocket-Client", `Error fetching script status: ${errorData}`);
-    logDisplay.appendLog(
-      "log-container-server",
-      `Error fetching script status: ${errorData.message}`
-    );
-  }
 }
 
 /**
@@ -215,8 +184,7 @@ function handleWebSocketMessage(message) {
       break;
 
     case "qr":
-      info("WebSocket-Client", `QR Code received.`);
-      qrModal.updateQR(message.data);
+      handleQrCodeMessage(message.data);
       break;
 
     case "wa-status":
@@ -327,6 +295,96 @@ function handleWebSocketMessage(message) {
         `[WebSocket Client] Unknown event: ${message.event}`
       );
       break;
+  }
+}
+
+/**
+ * Handle QR code messages.
+ * @param {string} qrData - The QR code data.
+ */
+function handleQrCodeMessage(qrData) {
+  if (qrData === lastQrCode) {
+    debug("WebSocket-Client", "Received duplicate QR code. Skipping update.");
+    return;
+  }
+
+  lastQrCode = qrData; // Update the last received QR code
+  info("WebSocket-Client", "QR Code received.");
+  qrModal.updateQR(qrData);
+}
+
+/**
+ * Fetch initial statuses for WhatsApp and script.
+ */
+async function fetchInitialStatuses() {
+  // Fetch WhatsApp status
+  try {
+    const waStatusResponse = await fetch("/api/wa/status");
+    const waStatusData = await waStatusResponse.json();
+
+    if (waStatusData.success) {
+      info("WebSocket-Client", `Initial WhatsApp status: ${waStatusData.data}`);
+      updateWhatsAppStatus(waStatusData.data.connected);
+      setWaAccount(waStatusData.data.account);
+
+      // Check and update waConnected based on the fetched status
+      if (waStatusData.data.connected) {
+        setWaConnected(true);
+      } else {
+        setWaConnected(false);
+      }
+
+      // Update connection state only if wa-status is successfully fetched
+      if (waStatusData.data && waStatusData.data.state) {
+        updateStatusUI(waStatusData.data.state);
+      }
+
+      // Explicitly check subscription status
+      const subscriptionResponse = await fetch("/api/wa/subscription-status");
+      const subscriptionData = await subscriptionResponse.json();
+
+      if (subscriptionData.success) {
+        setIsSubscribed(subscriptionData.data.subscribed);
+        info("WebSocket-Client", `Subscription status updated to: ${subscriptionData.data.subscribed}`);
+      } else {
+        warn("WebSocket-Client", `Failed to fetch subscription status: ${subscriptionData.error}`);
+      }
+    } else {
+      warn("WebSocket-Client", `Failed to fetch WhatsApp status: ${waStatusData.error}`);
+      logDisplay.appendLog(
+        "log-container-server",
+        `Failed to fetch WhatsApp status: ${waStatusData.error}`
+      );
+    }
+  } catch (errorData) {
+    error("WebSocket-Client", `Error fetching WhatsApp status: ${errorData}`);
+    logDisplay.appendLog(
+      "log-container-server",
+      `Error fetching WhatsApp status: ${errorData.message}`
+    );
+  }
+
+  // Fetch script status
+  try {
+    const scriptStatusResponse = await fetch("/api/script/status");
+    const scriptStatusData = await scriptStatusResponse.json();
+
+    if (scriptStatusData.success) {
+      info("WebSocket-Client", `Initial script status: ${scriptStatusData.data}`);
+      updateScriptStatus(scriptStatusData.data.running);
+    } else {
+      warn("WebSocket-Client", `Failed to fetch script status: ${scriptStatusData.error}`);
+      logDisplay.appendLog(
+        "log-container-server",
+        `Failed to fetch script status: ${scriptStatusData.error}`
+      );
+    }
+  } catch (errorData) {
+    error("WebSocket-Client", `Error fetching script status: ${errorData}`);
+    logDisplay.appendLog(
+      "log-container-server",
+      `Error fetching script status: ${errorData.message}`
+    );
   }
 }
 
