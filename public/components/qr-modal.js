@@ -1,37 +1,33 @@
 // components/qr-modal.js
-import { setupLogging } from "../../utils/logger.js";
-
-// Initialize logging
-const { info, warn, error } = setupLogging();
 
 const qrModal = {
   /**
    * Initializes the QR modal component.
    */
   initialize: () => {
-    info("QR-Modal", "Initializing...");
+    console.info("QR-Modal", "Initializing...");
 
     // Add event listener to close button
     const closeButton = document.getElementById("close-qr-button");
     if (closeButton) {
       closeButton.addEventListener("click", qrModal.hideQR);
     } else {
-      error("QR-Modal", "Close button not found.");
+      console.error("QR-Modal", "Close button not found.");
     }
 
-    info("QR-Modal", "Initialized.");
+    console.info("QR-Modal", "Initialized.");
   },
 
   /**
    * Displays the QR code modal.
    */
   showQR: () => {
-    info("QR-Modal", "Displaying QR code modal...");
+    console.info("QR-Modal", "Displaying QR code modal...");
     const qrModalElement = document.getElementById("qr-modal");
     const qrImageElement = document.getElementById("qr-image");
 
     if (!qrModalElement || !qrImageElement) {
-      error("QR-Modal", "Required elements not found in the DOM.");
+      console.error("QR-Modal", "Required elements not found in the DOM.");
       return;
     }
 
@@ -39,7 +35,7 @@ const qrModal = {
     const loadingGifPath = "/assets/loading.gif"; // Ensure this path is correct
     qrImageElement.src = loadingGifPath;
     qrImageElement.alt = "Waiting for QR code...";
-    warn("QR-Modal", "Waiting for QR Code...");
+    console.warn("QR-Modal", "Waiting for QR Code...");
 
     qrModalElement.style.display = "block";
   },
@@ -48,16 +44,16 @@ const qrModal = {
    * Hides the QR code modal.
    */
   hideQR: () => {
-    info("QR-Modal", "Hiding QR code modal...");
+    console.info("QR-Modal", "Hiding QR code modal...");
     const qrModalElement = document.getElementById("qr-modal");
 
     if (!qrModalElement) {
-      error("QR-Modal", "QR modal element not found.");
+      console.error("QR-Modal", "QR modal element not found.");
       return;
     }
 
     qrModalElement.style.display = "none";
-    info("QR-Modal", "QR Code modal closed.");
+    console.info("QR-Modal", "QR Code modal closed.");
   },
 
   /**
@@ -65,15 +61,15 @@ const qrModal = {
    * @param {string} qrData - The QR code payload received from the WhatsApp API.
    */
   updateQR: (qrData) => {
-    info("QR-Modal", "Updating QR code...");
+    console.info("QR-Modal", "Updating QR code...");
     if (!qrData) {
-      error("QR-Modal", "Invalid QR code data received.");
+      console.error("QR-Modal", "Invalid QR code data received.");
       return;
     }
 
     const qrImageElement = document.getElementById("qr-image");
     if (!qrImageElement) {
-      error("QR-Modal", "QR image element not found.");
+      console.error("QR-Modal", "QR image element not found.");
       return;
     }
 
@@ -90,9 +86,9 @@ const qrModal = {
         colorLight: "#ffffff",
         correctLevel: QRCode.CorrectLevel.H,
       });
-      info("QR-Modal", "QR Code updated.");
+      console.info("QR-Modal", "QR Code updated.");
     } catch (err) {
-      error("QR-Modal", `Error generating QR code: ${err}`);
+      console.error("QR-Modal", `Error generating QR code: ${err}`);
     }
   },
 
@@ -100,25 +96,25 @@ const qrModal = {
    * Automatically close the QR modal when WhatsApp is connected.
    */
   autoCloseOnConnection: () => {
-    info("QR-Modal", "WhatsApp connected. Closing QR Code modal automatically.");
+    console.info("QR-Modal", "WhatsApp connected. Closing QR Code modal automatically.");
     qrModal.hideQR();
   },
 
   // Function to explicitly show the QR modal
   showModal: () => {
-    info("QR-Modal", "Displaying QR code modal...");
+    console.info("QR-Modal", "Displaying QR code modal...");
     const qrModalElement = document.getElementById("qr-modal");
     if (qrModalElement) {
       qrModalElement.style.display = "block";
     } else {
-      error("QR-Modal", "QR modal element not found.");
+      console.error("QR-Modal", "QR modal element not found.");
     }
   },
 };
 
 // Export showModal function specifically
 function showQRModal() {
-  info("QR-Modal", "Showing QR Modal on user request.");
+  console.info("QR-Modal", "Showing QR Modal on user request.");
   qrModal.showModal();
 }
 

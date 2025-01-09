@@ -1,15 +1,9 @@
 // components/file-editor.js
-import { logDisplay } from "./log-display.js";
-import { setupLogging } from "../utils/logger.js";
-
-// Initialize logging
-const { info, warn, error } = setupLogging();
-
 let editor;
 
 const fileEditor = {
   initialize: () => {
-    info("File Editor", "Initializing...");
+    console.info("File Editor", "Initializing...");
 
     // Initialize Ace Editor if it hasn't been initialized yet
     if (!editor) {
@@ -24,22 +18,15 @@ const fileEditor = {
     }
 
     // Attach event listeners to buttons
-    document
-      .getElementById("save-file-button")
-      ?.addEventListener("click", fileEditor.saveFile);
-    document
-      .getElementById("close-editor-button")
-      ?.addEventListener("click", fileEditor.closeEditor);
-    document
-      .getElementById("cancel-editor-button")
-      ?.addEventListener("click", fileEditor.closeEditor);
+    document.getElementById("save-file-button")?.addEventListener("click", fileEditor.saveFile);
+    document.getElementById("close-editor-button")?.addEventListener("click", fileEditor.closeEditor);
+    document.getElementById("cancel-editor-button")?.addEventListener("click", fileEditor.closeEditor);
 
-    info("File Editor", "Initialized.");
+    console.info("File Editor", "Initialized.");
   },
 
-  // Updated to use fetch to get file content from the server
   editFile: async (filename) => {
-    info("File Editor", `Editing ${filename}...`);
+    console.info("File Editor", `Editing ${filename}...`);
 
     try {
       const res = await fetch(`/dashboard/api/edit/${filename}`);
@@ -63,27 +50,18 @@ const fileEditor = {
         document.getElementById("editor-modal").style.display = "block";
       } else {
         const errorData = await res.json();
-        error("File Editor", `Error fetching ${filename}:`, errorData);
-        logDisplay.appendLog(
-          "log-container-server",
-          `Error fetching ${filename}: ${errorData.error || "Unknown error"}`
-        );
+        console.error("File Editor", `Error fetching ${filename}:`, errorData);
       }
     } catch (errorData) {
-      error("File Editor", "Network or other error:", errorData);
-      logDisplay.appendLog(
-        "log-container-server",
-        `Network or other error while fetching ${filename}`
-      );
+      console.error("File Editor", "Network or other error:", errorData);
     }
   },
 
-  // Updated to use fetch to send updated content to the server
   saveFile: async () => {
     const filename = document.getElementById("current-file").innerText;
     const content = editor.getValue();
 
-    info("File Editor", `Saving ${filename}...`);
+    console.info("File Editor", `Saving ${filename}...`);
 
     try {
       const res = await fetch("/dashboard/api/save", {
@@ -95,28 +73,19 @@ const fileEditor = {
       });
 
       if (res.ok) {
-        info("File Editor", `${filename} saved successfully.`);
-        logDisplay.appendLog("log-container", `${filename} saved successfully.`);
+        console.info("File Editor", `${filename} saved successfully.`);
         fileEditor.closeEditor();
       } else {
         const errorData = await res.json();
-        error("File Editor", `Error saving ${filename}:`, errorData);
-        logDisplay.appendLog(
-          "log-container",
-          `Error saving ${filename}: ${errorData.error || "Unknown error"}`
-        );
+        console.error("File Editor", `Error saving ${filename}:`, errorData);
       }
     } catch (errorData) {
-      error("File Editor", "Network or other error:", errorData);
-      logDisplay.appendLog(
-        "log-container",
-        `Network or other error while saving ${filename}`
-      );
+      console.error("File Editor", "Network or other error:", errorData);
     }
   },
 
   closeEditor: () => {
-    info("File Editor", "Closing editor...");
+    console.info("File Editor", "Closing editor...");
     document.getElementById("editor-modal").style.display = "none";
   },
 };

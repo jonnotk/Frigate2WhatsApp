@@ -1,16 +1,12 @@
 // components/log-display.js
-import { setupLogging } from "../utils/logger.js";
-
-// Initialize logging
-const { info, warn, error } = setupLogging();
 
 const logDisplay = {
   /**
    * Initializes the log display module.
    */
   initialize: () => {
-    info("Log Display", "Initializing...");
-    info("Log Display", "Initialized.");
+    console.info("Log Display", "Initializing...");
+    console.info("Log Display", "Initialized.");
   },
 
   /**
@@ -22,7 +18,7 @@ const logDisplay = {
     const logContainer = document.getElementById(containerId);
 
     if (!logContainer) {
-      error("Log Display", `Log container not found: ${containerId}`);
+      console.error("Log Display", `Log container not found: ${containerId}`);
       return;
     }
 
@@ -43,13 +39,13 @@ const logDisplay = {
    * @param {string} containerId - The ID of the log container.
    */
   clearLogs: (containerId) => {
-    info("Log Display", `Clearing logs for ${containerId}...`);
+    console.info("Log Display", `Clearing logs for ${containerId}...`);
     const logContainer = document.getElementById(containerId);
 
     if (logContainer) {
       logContainer.innerHTML = "";
     } else {
-      error("Log Display", `Log container not found: ${containerId}`);
+      console.error("Log Display", `Log container not found: ${containerId}`);
     }
   },
 
@@ -62,7 +58,7 @@ const logDisplay = {
     const logContainer = document.getElementById(containerId);
 
     if (!logContainer) {
-      error("Log Display", `Log container not found: ${containerId}`);
+      console.error("Log Display", `Log container not found: ${containerId}`);
       return;
     }
 
@@ -75,7 +71,7 @@ const logDisplay = {
     a.click();
     URL.revokeObjectURL(url);
 
-    info("Log Display",`Logs exported from ${containerId} to ${filename}.`);
+    console.info("Log Display",`Logs exported from ${containerId} to ${filename}.`);
   },
 };
 

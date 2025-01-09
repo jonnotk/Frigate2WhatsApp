@@ -1,15 +1,11 @@
 // components/code-editor.js
 import { logDisplay } from "./log-display.js";
-import { setupLogging } from "../utils/logger.js";
-
-// Initialize logging
-const { info, warn, error } = setupLogging();
 
 let editor;
 
 const codeEditor = {
   initialize: () => {
-    info("Code Editor", "Initializing...");
+    console.info("Code Editor", "Initializing...");
 
     // Initialize Ace Editor if it hasn't been initialized yet
     if (!editor) {
@@ -37,11 +33,11 @@ const codeEditor = {
       .getElementById("save-file-button")
       ?.addEventListener("click", codeEditor.saveFile);
 
-    info("Code Editor", "Initialized.");
+      console.info("Code Editor", "Initialized.");
   },
 
   editFile: async (filename) => {
-    info("Code Editor", `Editing ${filename}...`);
+    console.info("Code Editor", `Editing ${filename}...`);
 
     try {
       const res = await fetch(`/dashboard/api/edit/${filename}`);
@@ -65,23 +61,15 @@ const codeEditor = {
         document.getElementById("editor-modal").style.display = "block";
       } else {
         const errorData = await res.json();
-        error("Code Editor", `Error fetching ${filename}:`, errorData);
-        logDisplay.appendLog(
-          "log-container-server",
-          `Error fetching ${filename}: ${errorData.error || "Unknown error"}`
-        );
+        console.error("Code Editor", `Error fetching ${filename}:`, errorData);
       }
     } catch (errorData) {
-      error("Code Editor", "Network or other error:", errorData);
-      logDisplay.appendLog(
-        "log-container-server",
-        `Network or other error while fetching ${filename}`
-      );
+      console.error("Code Editor", "Network or other error:", errorData);
     }
   },
 
   clearEditor: () => {
-    info("Code Editor", "Clearing editor...");
+    console.info("Code Editor", "Clearing editor...");
     editor.setValue("");
   },
 
@@ -90,17 +78,17 @@ const codeEditor = {
       const text = await navigator.clipboard.readText();
       editor.session.insert(editor.getCursorPosition(), text);
     } catch (err) {
-      error("Code Editor", "Failed to read clipboard contents: ", err);
+      console.error("Code Editor", "Failed to read clipboard contents: ", err);
     }
   },
 
   undoEditor: () => {
-    info("Code Editor", "Undoing last action...");
+    console.info("Code Editor", "Undoing last action...");
     editor.undo();
   },
 
   closeEditor: () => {
-    info("Code Editor", "Closing editor...");
+    console.info("Code Editor", "Closing editor...");
     document.getElementById("editor-modal").style.display = "none";
   },
 
@@ -108,7 +96,7 @@ const codeEditor = {
     const filename = document.getElementById("current-file").innerText;
     const content = editor.getValue();
 
-    info("Code Editor", `Saving ${filename}...`);
+    console.info("Code Editor", `Saving ${filename}...`);
 
     try {
       const res = await fetch("/dashboard/api/save", {
@@ -120,23 +108,14 @@ const codeEditor = {
       });
 
       if (res.ok) {
-        info("Code Editor", `${filename} saved successfully.`);
-        logDisplay.appendLog("log-container", `${filename} saved successfully.`);
+        console.info("Code Editor", `${filename} saved successfully.`);
         codeEditor.closeEditor();
       } else {
         const errorData = await res.json();
-        error("Code Editor", `Error saving ${filename}:`, errorData);
-        logDisplay.appendLog(
-          "log-container",
-          `Error saving ${filename}: ${errorData.error || "Unknown error"}`
-        );
+        console.error("Code Editor", `Error saving ${filename}:`, errorData);
       }
     } catch (errorData) {
-      error("Code Editor", "Network or other error:", errorData);
-      logDisplay.appendLog(
-        "log-container",
-        `Network or other error while saving ${filename}`
-      );
+      console.error("Code Editor", "Network or other error:", errorData);
     }
   },
 };

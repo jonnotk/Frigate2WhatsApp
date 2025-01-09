@@ -63,6 +63,14 @@ let groupPollingInterval = null;
 // Global variable to store the user's groups (accessible to other modules)
 let userGroups = [];
 
+let connectionState = "disconnected"; // Initialize connectionState
+
+function updateConnectionState(newState) {
+  connectionState = newState; // Update connectionState
+  info("WhatsApp-Connection", `Connection state updated: ${newState}`);
+}
+
+
 /**
  * Updates the connection state and broadcasts it to the frontend.
  * @param {string} state - The new connection state.
@@ -689,4 +697,6 @@ export {
   stopForwarding,
   getForwardingStatus,
   userGroups,
+  connectionState,
+  updateConnectionState,
 };

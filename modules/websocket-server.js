@@ -13,6 +13,7 @@ import {
   isConnected,
   getAccountInfo,
   userGroups,
+  connectionState, // Import connectionState from whatsapp.js
 } from "./whatsapp.js";
 import { getIsSubscribed, getIsSubscribing, setIsSubscribing } from "../state.js";
 import {
@@ -20,7 +21,7 @@ import {
   PORT,
   WS_URL,
   BASE_DIR,
-} from "../constants-server.js"; // Now using constants from constants-server.js
+} from "../constants-server.js";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -173,8 +174,7 @@ function sendInitialStatus(ws) {
  * Get the current connection state from whatsapp.js
  */
 function getWhatsAppConnectionState() {
-  // Assuming whatsapp.js updates this state in a similar way to how it was managed in whatsapp-connection.js
-  return connectionState; // Or however you choose to expose it from whatsapp.js after refactoring
+  return connectionState; // Now this will work
 }
 
 /**
@@ -198,7 +198,7 @@ async function handleClientMessage(ws, message) {
           error: error.message,
         });
         setIsSubscribing(false);
-        updateConnectionState(CONNECTION_STATES.DISCONNECTED); // Assuming whatsapp.js has a similar function to update state
+        updateConnectionState("disconnected"); // Assuming whatsapp.js has a similar function to update state
         ws.send(
           JSON.stringify({
             event: "wa-error",
@@ -208,7 +208,6 @@ async function handleClientMessage(ws, message) {
       }
       break;
 
-    // ... (rest of the cases for different message events)
     case "wa-unsubscribe-request":
       info("WebSocket-Server", "WhatsApp unsubscription request received");
       unlinkWhatsApp()
@@ -314,17 +313,18 @@ async function handleClientMessage(ws, message) {
       }
       ws.send(JSON.stringify({ event: "wa-forwarding", data: { forwarding } }));
       break;
+
     case "assign-camera-to-group":
       const { camera, group } = message.data;
-      info("WebSocket-Server",`Assigning camera ${camera} to group ${group}...`);
+      info("WebSocket-Server", `Assigning camera ${camera} to group ${group}...`);
       try {
-          await handleAssignCameraToGroup(camera, group);
-          info("WebSocket-Server", `Camera ${camera} assigned to group ${group}`);
-          broadcast("camera-group-updated", { camera, group });
+        await handleAssignCameraToGroup(camera, group);
+        info("WebSocket-Server", `Camera ${camera} assigned to group ${group}`);
+        broadcast("camera-group-updated", { camera, group });
       } catch (err) {
-          error("WebSocket-Server",`Error assigning camera to group: ${err}`);
-          // Send an error message back to the client
-          ws.send(JSON.stringify({ event: "error", data: `Failed to assign camera to group: ${err}` }));
+        error("WebSocket-Server", `Error assigning camera to group: ${err}`);
+        // Send an error message back to the client
+        ws.send(JSON.stringify({ event: "error", data: `Failed to assign camera to group: ${err}` }));
       }
       break;
 
