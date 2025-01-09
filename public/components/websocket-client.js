@@ -23,35 +23,36 @@ import {
 const info = console.log;
 const warn = console.warn;
 const error = console.error;
-const debug = console.debug; // Add this if needed
+const debug = console.debug;
 
 let WS_BASE_URL = null;
 let socket = null;
 let wsUrl = null;
 
 // Track reconnection attempts and initial status fetching
-let reconnectionAttempts = 0; // Track reconnection attempts
-const MAX_RECONNECTION_ATTEMPTS = 5; // Maximum number of reconnection attempts
-const RECONNECTION_BACKOFF = 5000; // Initial delay between reconnection attempts (5 seconds)
-let isInitialStatusFetched = false; // Flag to track if initial statuses have been fetched
-let isReconnecting = false; // Flag to track if a reconnection is in progress
+let reconnectionAttempts = 0;
+const MAX_RECONNECTION_ATTEMPTS = 5;
+const RECONNECTION_BACKOFF = 5000;
+let isInitialStatusFetched = false;
+let isReconnecting = false;
 
 // Track the last received QR code
 let lastQrCode = null;
-const QR_UPDATE_THROTTLE_MS = 1000; // Throttle QR code updates to once per second
+const QR_UPDATE_THROTTLE_MS = 1000;
+
+// Add a flag to track if the WebSocket is already connecting
+let isConnecting = false;
 
 async function initializeSocket() {
   try {
-    // Fetch WebSocket URL from the server
     const response = await fetch("/api/ws-config");
     if (!response.ok) {
       throw new Error("Failed to fetch WebSocket configuration");
     }
     const config = await response.json();
-    wsUrl = config.WS_URL; // Set the WebSocket URL from the server response
-    WS_BASE_URL = wsUrl.replace(/^ws:\/\//, ""); // Remove protocol from WS_URL
+    wsUrl = config.WS_URL;
+    WS_BASE_URL = wsUrl.replace(/^ws:\/\//, "");
 
-    // Retrieve or generate a session ID
     let sessionId = sessionStorage.getItem("sessionId");
     if (!sessionId) {
       sessionId = generateSessionId();
@@ -69,23 +70,19 @@ async function initializeSocket() {
 }
 
 function connectWebSocket(sessionId) {
-  // Construct the WebSocket URL with the session ID as a query parameter
-  const fullWsUrl = `${wsUrl}?sessionId=${sessionId}`;
-  info("WebSocket-Client", `WebSocket URL set to: ${fullWsUrl}`);
-
-  // Create WebSocket connection to the server
-  socket = new WebSocket(fullWsUrl);
-
-  // Store the WebSocket instance in the global scope
-  window.ws = socket;
-
-  // Ensure the socket object is not null before assigning event handlers
-  if (!socket) {
-    error("WebSocket-Client", "WebSocket connection failed. Socket is null.");
+  if (isConnecting) {
+    info("WebSocket-Client", "WebSocket is already connecting. Skipping duplicate call.");
     return;
   }
 
-  // Event: Connection opened
+  isConnecting = true;
+
+  const fullWsUrl = `${wsUrl}?sessionId=${sessionId}`;
+  info("WebSocket-Client", `WebSocket URL set to: ${fullWsUrl}`);
+
+  socket = new WebSocket(fullWsUrl);
+  window.ws = socket;
+
   socket.onopen = () => {
     info("WebSocket-Client", "[WebSocket Client] Connection established.");
     logDisplay.appendLog(
@@ -93,37 +90,52 @@ function connectWebSocket(sessionId) {
       "[WebSocket Client] Connected to server."
     );
 
-    // Reset reconnection attempts on successful connection
     reconnectionAttempts = 0;
     isReconnecting = false;
+    isConnecting = false;
 
-    // Fetch initial statuses only if they haven't been fetched yet
     if (!isInitialStatusFetched) {
       fetchInitialStatuses();
-      isInitialStatusFetched = true; // Mark initial statuses as fetched
+      isInitialStatusFetched = true;
     }
 
     // Initialize WhatsApp Connection after WebSocket is established
     setTimeout(() => {
       initWhatsAppConnection();
-    }, 500); // Delay initialization to ensure the WebSocket is fully ready
+    }, 500);
   };
 
-  // Event: Message received
-  socket.onmessage = (event) => {
-    debug("WebSocket-Client", `[WebSocket Client] Message received: ${event.data}`);
+  socket.onclose = () => {
+    if (isReconnecting) {
+      return;
+    }
 
-    try {
-      const message = JSON.parse(event.data);
-      handleWebSocketMessage(message);
-    } catch (errorData) {
-      error("WebSocket-Client", `Error processing message: ${errorData}`);
+    isReconnecting = true;
+    reconnectionAttempts++;
+    if (reconnectionAttempts > MAX_RECONNECTION_ATTEMPTS) {
+      error("WebSocket-Client", "Maximum reconnection attempts reached. Stopping reconnection.");
       logDisplay.appendLog(
         "log-container-server",
-        `[WebSocket Client] Error processing message: ${errorData.message}`
+        "[WebSocket Client] Maximum reconnection attempts reached. Stopping reconnection."
       );
+      return;
     }
+
+    const delay = RECONNECTION_BACKOFF * reconnectionAttempts;
+    warn("WebSocket-Client", `[WebSocket Client] Connection closed. Reconnecting in ${delay / 1000} seconds...`);
+    logDisplay.appendLog(
+      "log-container-server",
+      `[WebSocket Client] Connection closed. Reconnecting in ${delay / 1000} seconds...`
+    );
+
+    isInitialStatusFetched = false;
+
+    setTimeout(() => {
+      isReconnecting = false;
+      initializeSocket();
+    }, delay);
   };
+}
 
   // Event: Connection error
   socket.onerror = (errorData) => {
@@ -167,7 +179,7 @@ function connectWebSocket(sessionId) {
       initializeSocket();
     }, delay);
   };
-}
+
 
 /**
  * Handle incoming WebSocket messages.

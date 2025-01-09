@@ -24,10 +24,8 @@ import {
 import { setupLogging } from "../utils/logger.js";
 import { removeSession } from "./whatsapp-session-manager.js";
 
-// Initialize logging
 const { info, warn, error, debug } = setupLogging();
 
-// Define CONNECTION_STATES within whatsapp.js
 const CONNECTION_STATES = {
   INITIALIZING: "initializing",
   QR_RECEIVED: "qr_received",
@@ -51,7 +49,6 @@ const CONNECTION_STATES = {
   UNSUBSCRIBING: "unsubscribing",
 };
 
-// Global variables
 let isInitializing = false;
 let waClient = null;
 let qrCodeData = null;
@@ -60,20 +57,13 @@ let qrRefreshInterval = null;
 let isForwarding = false;
 let groupPollingInterval = null;
 
-// Global variable to store the user's groups (accessible to other modules)
 let userGroups = [];
 
-// Track the last connection state and broadcast time
 let lastConnectionState = null;
 let lastBroadcastTime = 0;
-const BROADCAST_THROTTLE_MS = 1000; // Throttle broadcasts to once per second
+const BROADCAST_THROTTLE_MS = 1000;
 
-/**
- * Updates the connection state and broadcasts it to the frontend.
- * @param {string} state - The new connection state.
- */
 function updateConnectionState(state) {
-  // Validate the new state
   if (!Object.values(CONNECTION_STATES).includes(state)) {
     const errorMessage = `Unknown connection state received: ${state}`;
     error("WhatsApp", errorMessage);
@@ -81,17 +71,15 @@ function updateConnectionState(state) {
     return;
   }
 
-  // Only update and broadcast if the state has changed
   if (state !== lastConnectionState) {
     connectionState = state;
-    lastConnectionState = state; // Update the last known state
+    lastConnectionState = state;
     info("WhatsApp", `Connection state updated: ${state}`);
 
-    // Throttle broadcasts to avoid rapid-fire updates
     const now = Date.now();
     if (now - lastBroadcastTime >= BROADCAST_THROTTLE_MS) {
       broadcast("connection-state", { state });
-      lastBroadcastTime = now; // Update the last broadcast time
+      lastBroadcastTime = now;
     }
   }
 }

@@ -13,7 +13,7 @@ import {
   isConnected,
   getAccountInfo,
   userGroups,
-  connectionState, // Import connectionState from whatsapp.js
+  connectionState,
 } from "./whatsapp.js";
 import { getIsSubscribed, getIsSubscribing, setIsSubscribing } from "../state.js";
 import {
@@ -31,14 +31,10 @@ import { handleAssignCameraToGroup } from "./camera-logic.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Initialize logging
 const { log, debug, info, warn, error } = setupLogging();
 
 let wss = null;
 
-/**
- * Validates the received WebSocket message payload.
- */
 function validatePayload(payload) {
   if (!payload || typeof payload !== "object") {
     return false;
@@ -52,10 +48,6 @@ function validatePayload(payload) {
   return true;
 }
 
-/**
- * Initialize the WebSocket server.
- * @param {object} server - The HTTP server instance.
- */
 function initializeWebSocket(server) {
   info("WebSocket-Server", "Initializing WebSocket server...");
 
@@ -82,7 +74,6 @@ function initializeWebSocket(server) {
   wss.on("connection", (ws, request) => {
     info("WebSocket-Server", `Client connected from: ${request.socket.remoteAddress}, sessionId: ${ws.sessionId}`);
 
-    // Check if the session exists on connection
     const sessionDir = path.join(
       BASE_DIR,
       "modules",
@@ -97,7 +88,6 @@ function initializeWebSocket(server) {
       ws.send(JSON.stringify({ event: "session-restored", data: {} }));
     }
 
-    // Send WS_URL and other config values to the client after connection
     ws.send(
       JSON.stringify({
         event: "config",
@@ -140,7 +130,6 @@ function initializeWebSocket(server) {
       ws.send(JSON.stringify({ event: "error", data: "Connection error" }));
     });
 
-    // Send initial status update and welcome message
     sendInitialStatus(ws);
     ws.send(
       JSON.stringify({
@@ -159,7 +148,7 @@ function sendInitialStatus(ws) {
     connected: isConnected(),
     account: getAccountInfo(),
     subscribed: getIsSubscribed(),
-    state: getWhatsAppConnectionState(), // Get connection state from whatsapp.js
+    state: getWhatsAppConnectionState(),
   };
 
   ws.send(
@@ -174,7 +163,7 @@ function sendInitialStatus(ws) {
  * Get the current connection state from whatsapp.js
  */
 function getWhatsAppConnectionState() {
-  return connectionState; // Now this will work
+  return connectionState;
 }
 
 /**
@@ -198,7 +187,7 @@ async function handleClientMessage(ws, message) {
           error: error.message,
         });
         setIsSubscribing(false);
-        updateConnectionState("disconnected"); // Assuming whatsapp.js has a similar function to update state
+        updateConnectionState("disconnected");
         ws.send(
           JSON.stringify({
             event: "wa-error",
@@ -323,7 +312,6 @@ async function handleClientMessage(ws, message) {
         broadcast("camera-group-updated", { camera, group });
       } catch (err) {
         error("WebSocket-Server", `Error assigning camera to group: ${err}`);
-        // Send an error message back to the client
         ws.send(JSON.stringify({ event: "error", data: `Failed to assign camera to group: ${err}` }));
       }
       break;

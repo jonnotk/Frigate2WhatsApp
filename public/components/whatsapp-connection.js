@@ -11,40 +11,19 @@ import {
 } from "../state.js";
 import { showQRModal } from "./qr-modal.js";
 
-// Replace setupLogging with browser-compatible logging
 const info = console.log;
 const warn = console.warn;
 const error = console.error;
 
-// State management
 let connectionState = "disconnected";
+let isInitializing = false;
 
-/**
- * Updates the connection state and logs the change.
- * @param {string} state - The new connection state.
- */
 function updateConnectionState(state) {
   const validStates = [
-    "initializing",
-    "qr_received",
-    "awaiting_qr",
-    "loading",
-    "failed_restore",
-    "timeout",
-    "connected",
-    "authenticated",
-    "disconnected",
-    "auth_failure",
-    "initialization_failed",
-    "destroyed",
-    "conflict",
-    "unlaunched",
-    "unpaired",
-    "unpaired_idle",
-    "not_ready",
-    "proxy_error",
-    "subscribing",
-    "unsubscribing",
+    "initializing", "qr_received", "awaiting_qr", "loading", "failed_restore",
+    "timeout", "connected", "authenticated", "disconnected", "auth_failure",
+    "initialization_failed", "destroyed", "conflict", "unlaunched", "unpaired",
+    "unpaired_idle", "not_ready", "proxy_error", "subscribing", "unsubscribing",
   ];
 
   if (!validStates.includes(state)) {
@@ -55,27 +34,37 @@ function updateConnectionState(state) {
     return;
   }
 
-  connectionState = state;
-  info("WhatsApp-Connection", `Connection state updated: ${state}`);
-  updateStatusUI(state);
+  if (state !== connectionState) {
+    connectionState = state;
+    info("WhatsApp-Connection", `Connection state updated: ${state}`);
+    updateStatusUI(state);
+  }
 }
 
-/**
- * Sends a message to the WebSocket server.
- * @param {string} event - The event name.
- * @param {object} data - The message data.
- */
-function sendWebSocketMessage(event, data) {
+function initWhatsAppConnection() {
+  if (getWaConnected()) {
+    info("WhatsApp-Connection", "WhatsApp is already connected. Skipping initialization.");
+    return;
+  }
+
+  if (isInitializing) {
+    info("WhatsApp-Connection", "WhatsApp connection is already being initialized. Skipping duplicate call.");
+    return;
+  }
+
+  isInitializing = true;
+  info("WhatsApp-Connection", "Initializing WhatsApp connection...");
+  updateConnectionState("initializing");
+
   const socket = window.ws;
   if (socket && socket.readyState === WebSocket.OPEN) {
-    const message = JSON.stringify({ event, data });
-    socket.send(message);
-    debug("WhatsApp-Connection", `WebSocket message sent: ${event}`, data);
+    sendWebSocketMessage("wa-subscribe-request", {});
+    isInitializing = false;
   } else {
-    warn(
-      "WhatsApp-Connection",
-      `WebSocket not connected. Cannot send message: ${event}`
-    );
+    setTimeout(() => {
+      isInitializing = false;
+      initWhatsAppConnection();
+    }, 1000);
   }
 }
 
@@ -117,17 +106,8 @@ function initialize() {
 
   info("WhatsApp-Connection", "Initialized.");
 }
-
-// Function to start the WhatsApp authorization process
-function initWhatsAppConnection() {
-  if (getWaConnected()) {
-    info(
-      "WhatsApp-Connection",
-      "WhatsApp is already connected. Skipping initialization."
-    );
-    return;
-  }
-
+  
+  isInitializing = true; // Set the flag to true when initialization starts
   info("WhatsApp-Connection", "Initializing WhatsApp connection...");
   updateConnectionState("initializing");
 
@@ -135,9 +115,11 @@ function initWhatsAppConnection() {
   const socket = window.ws;
   if (socket && socket.readyState === WebSocket.OPEN) {
     sendWebSocketMessage("wa-subscribe-request", {});
+    isInitializing = false; // Reset the flag after sending the request
   } else {
     // If the WebSocket is not open, retry after a short delay
     setTimeout(() => {
+      isInitializing = false; // Reset the flag before retrying
       initWhatsAppConnection();
     }, 1000); // Retry after 1 second
   }
