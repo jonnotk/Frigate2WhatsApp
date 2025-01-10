@@ -1,86 +1,169 @@
-// modules/whatsapp-session-manager.js
-import fs from "fs";
-import path from "path";
-import { BASE_DIR } from "../constants-server.js";
-import { setupLogging } from "../utils/logger.js";
-import { rimraf } from "rimraf";
-
-const { info, warn, error } = setupLogging();
-
-const SESSIONS_DIR = path.join(BASE_DIR, "modules", "whatsapp-sessions");
-
-async function createSession(sessionId) {
-  const sessionPath = path.join(SESSIONS_DIR, `session-${sessionId}`);
-
-  // Validate sessionId (basic example - make it more robust if needed)
-  if (!/^[a-zA-Z0-9_-]+$/.test(sessionId)) {
-    error("WhatsApp Session Manager", `Invalid session ID: ${sessionId}`);
-    throw new Error("Invalid session ID");
-  }
-
-  // Prevent path traversal
-  const normalizedPath = path.normalize(sessionPath);
-  if (!normalizedPath.startsWith(SESSIONS_DIR)) {
-    error("WhatsApp Session Manager", `Invalid session path: ${normalizedPath}`);
-    throw new Error("Invalid session path");
-  }
-
+ /**
+ * Unauthorizes the WhatsApp client.
+ */
+async function unauthorize() {
+  info("WhatsApp", "Unauthorizing WhatsApp...");
   try {
-    if (!fs.existsSync(sessionPath)) {
-      fs.mkdirSync(sessionPath, { recursive: true });
-      info(
-        "WhatsApp Session Manager",
-        `Session directory created for ID: ${sessionId}`
-      );
+    await waClient.logout();
+    setWaConnected(false);
+    setIsSubscribed(false);
+    setIsSubscribing(false);
+    info("WhatsApp", "WhatsApp unauthorized successfully.");
+    broadcast("wa-authorized", { authorized: false });
+    stopGroupPolling();
+  } catch (error) {
+    error("WhatsApp", "Error unauthorizing WhatsApp:", error);
+    broadcast("wa-error", {
+      message: "Error unauthorizing WhatsApp",
+      error: error.message,
+    });
+  }
+}
+
+/**
+ * Starts forwarding messages.
+ */
+function startForwarding() {
+  info("WhatsApp", "Starting message forwarding...");
+  isForwarding = true;
+  broadcast("forwarding-started", { forwarding: true });
+}
+
+/**
+ * Stops forwarding messages.
+ */
+function stopForwarding() {
+  info("WhatsApp", "Stopping message forwarding...");
+  isForwarding = false;
+  broadcast("forwarding-stopped", { forwarding: false });
+}
+
+/**
+ * Get the current forwarding status.
+ * @returns {boolean} True if forwarding is active, false otherwise.
+ */
+function getForwardingStatus() {
+  return isForwarding;
+}
+
+/**
+ * Retries a function with a specified number of retries and delay.
+ * @param {function} fn - The function to retry.
+ * @param {number} retries - Number of retries.
+ * @param {number} delay - Delay between retries in milliseconds.
+ * @returns {Promise} - The result of the function.
+ */
+async function retry(fn, retries = MAX_RETRIES, delay = RETRY_DELAY) {
+  try {
+    return await fn();
+  } catch (error) {
+    if (retries > 0) {
+      info("WhatsApp", `Retrying... (${retries} attempts left)`, {
+        error: error.message,
+      });
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      return retry(fn, retries - 1, delay);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Start polling for WhatsApp groups.
+ */
+async function startGroupPolling() {
+  if (!waClient || !getWaConnected()) {
+    info(
+      "WhatsApp",
+      "Client not initialized or not connected. Cannot start group polling."
+    );
+    return;
+  }
+
+  info("WhatsApp", "Starting group polling...");
+  try {
+    await fetchAndUpdateGroups();
+    groupPollingInterval = setInterval(async () => {
+      if (!waClient || !getWaConnected()) {
+        info("WhatsApp", "Client is not connected. Stopping group polling.");
+        stopGroupPolling();
+        return;
+      }
+      await fetchAndUpdateGroups();
+    }, 30000);
+  } catch (error) {
+    error("WhatsApp", "Error setting up group polling:", error);
+  }
+}
+
+/**
+ * Stop polling for WhatsApp groups.
+ */
+function stopGroupPolling() {
+  if (groupPollingInterval) {
+    clearInterval(groupPollingInterval);
+    groupPollingInterval = null;
+    info("WhatsApp", "Group polling stopped.");
+  }
+}
+
+/**
+ * Fetches and updates the list of WhatsApp groups the user is a part of.
+ */
+async function fetchAndUpdateGroups() {
+  if (!waClient) {
+    info("WhatsApp", "Client not initialized. Cannot fetch groups.");
+    return;
+  }
+  try {
+    const chats = await waClient.getChats();
+    const fetchedGroups = chats
+      .filter((chat) => chat.isGroup)
+      .map((group) => ({
+        id: group.id._serialized,
+        name: group.name,
+        isMember: true,
+        isAdmin: group.groupMetadata && group.groupMetadata.participants.some(
+          (participant) =>
+            participant.id._serialized === waClient.info.wid._serialized &&
+            participant.isAdmin
+        ),
+      }));
+
+    // Update userGroups only if there are changes
+    if (JSON.stringify(userGroups) !== JSON.stringify(fetchedGroups)) {
+      userGroups = fetchedGroups;
+      info("WhatsApp", "Fetched and updated user groups:", userGroups);
+      broadcast("wa-groups", userGroups);
     }
   } catch (err) {
-    error(
-      "WhatsApp Session Manager",
-      `Error creating session directory for ID: ${sessionId}`,
-      err
-    );
-    throw new Error("Error creating session directory");
-  }
-}
-
-async function removeSession(sessionId) {
-  const sessionPath = path.join(SESSIONS_DIR, `session-${sessionId}`);
-
-  // Validate sessionId (basic example - make it more robust if needed)
-  if (!/^[a-zA-Z0-9_-]+$/.test(sessionId)) {
-    error("WhatsApp Session Manager", `Invalid session ID: ${sessionId}`);
-    throw new Error("Invalid session ID");
-  }
-
-  // Prevent path traversal
-  const normalizedPath = path.normalize(sessionPath);
-  if (!normalizedPath.startsWith(SESSIONS_DIR)) {
-    error("WhatsApp Session Manager", `Invalid session path: ${normalizedPath}`);
-    throw new Error("Invalid session path");
-  }
-
-  try {
-    if (fs.existsSync(sessionPath)) {
-      await rimraf(sessionPath);
-      info(
-        "WhatsApp Session Manager",
-        `Session directory removed for ID: ${sessionId}`
-      );
+    error("WhatsApp", "Error fetching or updating user groups:", err);
+    if (err.message.includes("Session closed")) {
+      info("WhatsApp", "Session closed. Stopping group polling.");
+      stopGroupPolling();
     }
-  } catch (err) {
-    error(
-      "WhatsApp Session Manager",
-      `Error removing session directory for ID: ${sessionId}`,
-      err
-    );
-    throw new Error("Error removing session directory");
+    broadcast("wa-error", {
+      message: "WhatsApp Error",
+      error: "Error fetching or updating user groups: " + err.message,
+    });
   }
 }
 
-// Placeholder for future implementation if needed
-async function loadSession(sessionId) {
-  const sessionPath = path.join(SESSIONS_DIR, `session-${sessionId}`);
-  // TODO: Implement session loading logic if needed
-}
-
-export { createSession, removeSession, loadSession };
+export {
+  initializeWhatsApp,
+  getQrCodeData,
+  updateAccountInfo,
+  isConnected,
+  getAccountInfo,
+  getWhatsAppClient,
+  unlinkWhatsApp,
+  connectWhatsApp,
+  disconnectWhatsApp,
+  destroyClient,
+  authorize,
+  unauthorize,
+  startForwarding,
+  stopForwarding,
+  getForwardingStatus,
+  userGroups,
+};

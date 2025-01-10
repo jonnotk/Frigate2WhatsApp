@@ -44,6 +44,10 @@
             <h2 class="section-title">WhatsApp Groups</h2>
             <ul id="group-list"></ul>
           </section>
+          <section class="section">
+            <h2 class="section-title">Group Membership Requests</h2>
+            <ul id="membership-requests-list"></ul>
+          </section>
         </aside>
 
         <section class="content">
@@ -64,19 +68,8 @@
 
           <section class="section">
             <h2 class="section-title">Logs</h2>
-            <div id="log-container-frigate">
-              <h3>Frigate2Whats Logs</h3>
-              <div id="log-container" class="log-output">
-                <p>Logs will appear here...</p>
-              </div>
-              <button id="export-logs-button">Export Logs</button>
-            </div>
-            <div id="log-container-serverjs">
-              <h3>Server.js Logs</h3>
-              <div id="log-container-server" class="log-output">
-                <p>Logs will appear here...</p>
-              </div>
-              <button id="export-server-logs-button">Export Logs</button>
+            <div id="log-display">
+              <textarea id="log-output" readonly></textarea>
             </div>
           </section>
 

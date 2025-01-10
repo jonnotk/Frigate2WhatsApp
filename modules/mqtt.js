@@ -1,22 +1,15 @@
 // modules/mqtt.js
 import mqtt from "mqtt";
-import fs from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
-import { broadcast } from "./websocket-server.js";
 import {
   MQTT_HOST,
   MQTT_USERNAME,
   MQTT_PASSWORD,
-  LOGS_DIR,
   CAMERA_COLOR,
   DEBUG,
 } from "../constants-server.js";
 import { getCameras, setCameras } from "../state.js";
 import { setupLogging } from "../utils/logger.js";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { addCamera } from "./camera-logic.js";
 
 // Initialize logging
 const { info, warn, error, debug } = setupLogging();
@@ -46,14 +39,6 @@ function initializeMQTT() {
         error("MQTT", `Error subscribing to topic: ${err}`);
       }
     });
-
-    // Summarize all cameras after subscription
-    setTimeout(() => {
-      info("MQTT", "Summary of Detected Cameras:");
-      getCameras().forEach((camera) => {
-        info("MQTT", `- ${camera} (Color: ${CAMERA_COLOR})`);
-      });
-    }, 5000); // Wait 5 seconds to ensure most topics are processed
   });
 
   mqttClient.on("error", (err) => {
@@ -101,32 +86,25 @@ function handleMQTTMessage(topic, payload) {
     ) &&
     !getCameras().includes(camera)
   ) {
-    const cameras = getCameras();
-    cameras.push(camera);
-    setCameras(cameras);
-    info("MQTT", `New camera found: ${camera}`);
-    broadcast("new-camera", { camera, color: CAMERA_COLOR });
+      addCamera(camera);
   }
 
   if (topicParts.length >= 3 && topicParts[2] === "events") {
-    const severity = payload.severity || "info";
-    const formattedMessage = {
-      camera: payload.camera,
-      label: payload.label,
-      zones: payload.current_zones || [],
-      startTime: payload.start_time
-        ? new Date(payload.start_time * 1000).toLocaleString()
-        : null,
-      endTime: payload.end_time
-        ? new Date(payload.end_time * 1000).toLocaleString()
-        : null,
-      score: payload.top_score || null,
-      severity,
-      color: severity === "alert" ? "#ff4d4d" : "#007bff",
-    };
-
-    info("MQTT", `${severity.toUpperCase()} Event: ${JSON.stringify(formattedMessage)}`);
-    broadcast("formatted-event", formattedMessage);
+    const severity = payload.type;
+    const eventType = payload.type;
+    
+    info("MQTT", `${severity.toUpperCase()} Event: ${eventType} ${payload.after.label} in ${payload.after.camera} ${payload.after.end_time ? "" : "started"} `);
+    
+    broadcast("formatted-event", {
+        camera: payload.after.camera,
+        severity: severity,
+        event: eventType,
+        label: payload.after.label,
+        zones: payload.after.current_zones || [],
+        startTime: payload.after.start_time ? new Date(payload.after.start_time * 1000).toLocaleString() : null,
+        endTime: payload.after.end_time ? new Date(payload.after.end_time * 1000).toLocaleString() : null,
+        thumbnail: payload.after.thumbnail,
+      });
   }
 
   if (topicParts[2] === "snapshot" || topicParts[2] === "clip") {

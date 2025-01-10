@@ -6,7 +6,7 @@ import { spawn } from "child_process";
 import { startScript, stopScript, getScriptProcess } from "./script-manager.js";
 import { isConnected, getAccountInfo, getQrCodeData, unlinkWhatsApp } from "./whatsapp.js";
 import { DASHBOARD_DIR, LOGS_DIR, LOG_FILE, BASE_DIR } from "../constants-server.js";
-import { getCameraGroupMappings, getCameras, getIsSubscribed } from "../state.js";
+import { getCameraGroupMappings, getCameras, getIsSubscribed, setCameraGroupMappings } from "../state.js";
 import { broadcast } from "./websocket-server.js";
 import { setupLogging } from "../utils/logger.js";
 import { assignCameraToGroup } from "./camera-logic.js";
@@ -15,7 +15,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Initialize logging
-const { log, info, warn, error } = setupLogging(LOG_FILE);
+const { log, info, warn, error } = setupLogging();
 
 /**
  * Validate API request payload.

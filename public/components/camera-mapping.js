@@ -1,6 +1,5 @@
 // public/components/camera-mapping.js
-import { logDisplay } from "./log-display.js";
-import { getCameras } from "../../state.js";
+import { getCameras, getCameraGroupMappings } from "../../state.js";
 
 const cameraMapping = {
   cameraListContainer: null, // Reference to the camera list container
@@ -46,7 +45,19 @@ const cameraMapping = {
 
       const { data: cameras } = await response.json();
       console.info("Camera Mapping", "Cameras fetched successfully:", cameras);
-      cameraMapping.updateCameraList(cameras);
+
+      // Fetch group mappings from the server
+      const mappingsResponse = await fetch("/api/camera-group-mappings");
+      if (!mappingsResponse.ok) {
+        const errorData = await mappingsResponse.json();
+        console.error("Camera Mapping", "Failed to fetch camera group mappings:", errorData);
+        return;
+      }
+
+      const { data: mappings } = await mappingsResponse.json();
+      console.info("Camera Mapping", "Camera group mappings fetched successfully:", mappings);
+
+      cameraMapping.updateCameraList(cameras, mappings);
     } catch (errorData) {
       console.error("Camera Mapping", "Error fetching cameras:", errorData);
     }
@@ -55,9 +66,10 @@ const cameraMapping = {
   /**
    * Update the camera list in the UI.
    * @param {string[]} cameras - List of camera names.
+   * @param {object} mappings - Object containing camera-group mappings.
    */
-  updateCameraList: (cameras) => {
-    console.info("Camera Mapping", "updateCameraList() called with cameras:", cameras);
+  updateCameraList: (cameras, mappings) => {
+    console.info("Camera Mapping", "updateCameraList() called with cameras:", cameras, "and mappings:", mappings);
 
     if (!cameraMapping.cameraListContainer) {
       console.error("Camera Mapping", "Camera list container not found.");
@@ -69,15 +81,16 @@ const cameraMapping = {
 
     // Populate the camera list
     cameras.forEach((camera) => {
-      cameraMapping.addCameraToUI(camera);
+      cameraMapping.addCameraToUI(camera, mappings && mappings[camera] ? mappings[camera] : null);
     });
   },
 
   /**
    * Dynamically add a new camera to the UI.
    * @param {string} camera - Name of the camera.
+   * @param {string} group - Name of the group the camera is assigned to.
    */
-  addCameraToUI: (camera) => {
+  addCameraToUI: (camera, group) => {
     console.info("Camera Mapping", "Adding camera:", camera);
 
     // Check if the camera already exists
@@ -106,6 +119,11 @@ const cameraMapping = {
         <option value="group2">Group 2</option>
         <option value="group3">Group 3</option>
       `;
+
+    // Set the selected group if available
+    if (group) {
+        groupSelect.value = group;
+      }
 
     // Add event listener for changing the group
     groupSelect.addEventListener("change", async () => {

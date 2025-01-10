@@ -14,6 +14,7 @@ import {
   setWaConnected,
   getWaAccount,
   setWaAccount,
+  setConnectionState
 } from "../state.js";
 import {
   MAX_RETRIES,
@@ -24,45 +25,50 @@ import {
 import { setupLogging } from "../utils/logger.js";
 import { removeSession } from "./whatsapp-session-manager.js";
 
+// Initialize logging
 const { info, warn, error, debug } = setupLogging();
 
+// Define CONNECTION_STATES within whatsapp.js
 const CONNECTION_STATES = {
-  INITIALIZING: "initializing",
-  QR_RECEIVED: "qr_received",
-  AWAITING_QR: "awaiting_qr",
-  LOADING: "loading",
-  FAILED_RESTORE: "failed_restore",
-  TIMEOUT: "timeout",
-  CONNECTED: "connected",
-  AUTHENTICATED: "authenticated",
-  DISCONNECTED: "disconnected",
-  AUTH_FAILURE: "auth_failure",
-  INITIALIZATION_FAILED: "initialization_failed",
-  DESTROYED: "destroyed",
-  CONFLICT: "conflict",
-  UNLAUNCHED: "unlaunched",
-  UNPAIRED: "unpaired",
-  UNPAIRED_IDLE: "unpaired_idle",
-  NOT_READY: "not_ready",
-  PROXY_ERROR: "proxy_error",
-  SUBSCRIBING: "subscribing",
-  UNSUBSCRIBING: "unsubscribing",
+    INITIALIZING: "initializing",
+    QR_RECEIVED: "qr_received",
+    AWAITING_QR: "awaiting_qr",
+    LOADING: "loading",
+    FAILED_RESTORE: "failed_restore",
+    TIMEOUT: "timeout",
+    CONNECTED: "connected",
+    AUTHENTICATED: "authenticated",
+    DISCONNECTED: "disconnected",
+    AUTH_FAILURE: "auth_failure",
+    INITIALIZATION_FAILED: "initialization_failed",
+    DESTROYED: "destroyed",
+    CONFLICT: "conflict",
+    UNLAUNCHED: "unlaunched",
+    UNPAIRED: "unpaired",
+    UNPAIRED_IDLE: "unpaired_idle",
+    NOT_READY: "not_ready",
+    PROXY_ERROR: "proxy_error",
+    SUBSCRIBING: "subscribing",
+    UNSUBSCRIBING: "unsubscribing"
 };
 
+// Global variables
 let isInitializing = false;
 let waClient = null;
 let qrCodeData = null;
-let connectionState = CONNECTION_STATES.DISCONNECTED;
 let qrRefreshInterval = null;
 let isForwarding = false;
 let groupPollingInterval = null;
 
+// Global variable to store the user's groups (accessible to other modules)
 let userGroups = [];
+// Global variable to store the user's group membership requests
+let groupMembershipRequests = [];
 
-let lastConnectionState = null;
-let lastBroadcastTime = 0;
-const BROADCAST_THROTTLE_MS = 1000;
-
+/**
+ * Updates the connection state and broadcasts it to the frontend.
+ * @param {string} state - The new connection state.
+ */
 function updateConnectionState(state) {
   if (!Object.values(CONNECTION_STATES).includes(state)) {
     const errorMessage = `Unknown connection state received: ${state}`;
@@ -71,17 +77,9 @@ function updateConnectionState(state) {
     return;
   }
 
-  if (state !== lastConnectionState) {
-    connectionState = state;
-    lastConnectionState = state;
-    info("WhatsApp", `Connection state updated: ${state}`);
-
-    const now = Date.now();
-    if (now - lastBroadcastTime >= BROADCAST_THROTTLE_MS) {
-      broadcast("connection-state", { state });
-      lastBroadcastTime = now;
-    }
-  }
+  setConnectionState(state);
+  info("WhatsApp", `Connection state updated: ${state}`);
+  broadcast("connection-state", { state });
 }
 
 /**
@@ -139,12 +137,12 @@ async function initializeWhatsApp(sessionId) {
         "--use-mock-keychain",
       ],
       executablePath: CHROMIUM_PATH,
-      dumpio: true, // Remove in production
+      dumpio: true, //remove in prod
     },
   });
 
   // --- Event Handlers ---
-  // (Covering all documented events in whatsapp-web.js 1.23.0)
+  // (Covering all documented events in whatsapp-web.js 1.26.1-alpha.3)
 
   waClient.on("qr", (qr) => {
     info("WhatsApp", "QR Code received. Broadcasting to frontend...");
@@ -176,18 +174,6 @@ async function initializeWhatsApp(sessionId) {
 
     await updateAccountInfo();
     startGroupPolling();
-  });
-
-  waClient.on("contact_changed", async (message, oldId, newId, isContact) => {
-    /**
-     * Emitted when a contact is changed.
-     * @param {Message} message The message that caused the contact change.
-     * @param {string|null} oldId The user's id before the change.
-     * @param {string} newId The user's new id.
-     * @param {boolean} isContact True if the user is a contact, false otherwise.
-     */
-    info("WhatsApp", "contact_changed event", message, oldId, newId, isContact);
-    await updateAccountInfo();
   });
 
   waClient.on("authenticated", () => {
@@ -226,39 +212,30 @@ async function initializeWhatsApp(sessionId) {
   // Group Events
   waClient.on("group_join", (notification) => {
     info("WhatsApp", "Group join:", notification);
-    broadcast("group_join", notification);
+    broadcast("wa-group-joined", notification);
   });
 
   waClient.on("group_leave", (notification) => {
     info("WhatsApp", "Group leave:", notification);
-    broadcast("group_leave", notification);
+    broadcast("wa-group-left", notification);
   });
 
   waClient.on("group_update", (notification) => {
     info("WhatsApp", "Group update:", notification);
-    broadcast("group_update", notification);
+    broadcast("wa-group_update", notification);
   });
 
-  waClient.on("group_admin_changed", (notification) => {
-    info("WhatsApp", "Group admin changed:", notification);
-    broadcast("group_admin_changed", notification);
+  waClient.on("group_membership_request", (request) => {
+    info("WhatsApp", "Group membership request:", request);
+    // Update the groupMembershipRequests array
+    groupMembershipRequests.push(request);
+    broadcast("wa-group-membership-request", request);
   });
 
   // Call Events
   waClient.on("call", (call) => {
     info("WhatsApp", "Call received:", call);
     broadcast("call", call);
-  });
-
-  // Deprecated call events (included for completeness, but ideally not used)
-  waClient.on("incoming_call", (call) => {
-    info("WhatsApp", "Incoming call (deprecated):", call);
-    broadcast("incoming_call", call);
-  });
-
-  waClient.on("outgoing_call", (call) => {
-    info("WhatsApp", "Outgoing call (deprecated):", call);
-    broadcast("outgoing_call", call);
   });
 
   // State Change Events
@@ -308,6 +285,12 @@ async function initializeWhatsApp(sessionId) {
     info("WhatsApp", "Media uploaded:", msg);
     broadcast("media_uploaded", msg);
   });
+
+    // added for updating wa-account number and name if number is edited in whatsapp
+    waClient.on("contact_changed", async (msg) => {
+        info("WhatsApp", "contact_changed event", msg);
+        await updateAccountInfo();
+      });
 
   // Initialization
   try {
@@ -653,15 +636,25 @@ async function fetchAndUpdateGroups() {
   }
   try {
     const chats = await waClient.getChats();
-    userGroups = chats
+    const fetchedGroups = chats
       .filter((chat) => chat.isGroup)
       .map((group) => ({
         id: group.id._serialized,
         name: group.name,
+        isMember: true,
+        isAdmin: group.groupMetadata && group.groupMetadata.participants.some(
+          (participant) =>
+            participant.id._serialized === waClient.info.wid._serialized &&
+            participant.isAdmin
+        ),
       }));
 
-    info("WhatsApp", "Fetched and updated user groups:", userGroups);
-    broadcast("wa-groups", userGroups);
+    // Update userGroups only if there are changes
+    if (JSON.stringify(userGroups) !== JSON.stringify(fetchedGroups)) {
+      userGroups = fetchedGroups;
+      info("WhatsApp", "Fetched and updated user groups:", userGroups);
+      broadcast("wa-groups", userGroups);
+    }
   } catch (err) {
     error("WhatsApp", "Error fetching or updating user groups:", err);
     if (err.message.includes("Session closed")) {
@@ -692,6 +685,4 @@ export {
   stopForwarding,
   getForwardingStatus,
   userGroups,
-  connectionState,
-  updateConnectionState,
 };

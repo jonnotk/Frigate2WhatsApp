@@ -1,6 +1,4 @@
 // components/code-editor.js
-import { logDisplay } from "./log-display.js";
-
 let editor;
 
 const codeEditor = {
@@ -33,7 +31,7 @@ const codeEditor = {
       .getElementById("save-file-button")
       ?.addEventListener("click", codeEditor.saveFile);
 
-      console.info("Code Editor", "Initialized.");
+    console.info("Code Editor", "Initialized.");
   },
 
   editFile: async (filename) => {
@@ -66,25 +64,6 @@ const codeEditor = {
     } catch (errorData) {
       console.error("Code Editor", "Network or other error:", errorData);
     }
-  },
-
-  clearEditor: () => {
-    console.info("Code Editor", "Clearing editor...");
-    editor.setValue("");
-  },
-
-  pasteToEditor: async () => {
-    try {
-      const text = await navigator.clipboard.readText();
-      editor.session.insert(editor.getCursorPosition(), text);
-    } catch (err) {
-      console.error("Code Editor", "Failed to read clipboard contents: ", err);
-    }
-  },
-
-  undoEditor: () => {
-    console.info("Code Editor", "Undoing last action...");
-    editor.undo();
   },
 
   closeEditor: () => {

@@ -22,8 +22,8 @@ function startScript(logger) {
     return;
   }
 
-  // Use BASE_DIR to construct the path to the script
-  const scriptPath = path.join(BASE_DIR, "public", "components" ,"frigate-filter.js");
+  // Construct path to the script
+  const scriptPath = path.join(BASE_DIR, "public", "components", "frigate-filter.js");
 
   const scriptProcess = spawn("node", [scriptPath]);
 

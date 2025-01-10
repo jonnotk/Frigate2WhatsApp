@@ -1,5 +1,4 @@
 // components/script-control.js
-import { logDisplay } from "./log-display.js";
 
 let scriptStatus = false; // Track the current script status
 
@@ -15,35 +14,19 @@ async function verifyWhatsAppLink() {
     if (!res.ok) {
       const errorData = await res.json();
       console.error("Script Control", "Error verifying WhatsApp link:", errorData);
-      logDisplay.appendLog(
-        "log-container-server",
-        `Error verifying WhatsApp link: ${errorData.error || "Unknown error"}`
-      );
       return false;
     }
 
     const { data } = await res.json();
     if (data.connected) {
       console.info("Script Control", "WhatsApp link is active.");
-      logDisplay.appendLog(
-        "log-container",
-        "[Script Control] WhatsApp link is active."
-      );
       return true;
     } else {
       console.warn("Script Control", "WhatsApp link is not active.");
-      logDisplay.appendLog(
-        "log-container-server",
-        "[Script Control] WhatsApp link is not active."
-      );
       return false;
     }
   } catch (errorData) {
     console.error("Script Control", "Network error while verifying WhatsApp link:", errorData);
-    logDisplay.appendLog(
-      "log-container-server",
-      `Network error while verifying WhatsApp link: ${errorData.message}`
-    );
     return false;
   }
 }
@@ -59,28 +42,14 @@ async function fetchScriptStatus() {
     if (!res.ok) {
       const errorData = await res.json();
       console.error("Script Control", "Error fetching script status:", errorData);
-      logDisplay.appendLog(
-        "log-container-server",
-        `Error fetching script status: ${errorData.error || "Unknown error"}`
-      );
       return;
     }
 
     const { data } = await res.json();
     scriptStatus = data.running; // Update the local script status
-    logDisplay.appendLog(
-      "log-container",
-      `[Script Control] Script is currently ${
-        scriptStatus ? "running" : "stopped"
-      }.`
-    );
     console.info("Script Control",`Script is currently ${scriptStatus ? "running" : "stopped"}.`);
   } catch (errorData) {
     console.error("Script Control", "Network error while fetching script status:", errorData);
-    logDisplay.appendLog(
-      "log-container-server",
-      `Network error while fetching script status: ${errorData.message}`
-    );
   }
 }
 
@@ -127,10 +96,7 @@ const scriptControl = {
     // Verify WhatsApp link status
     const isWhatsAppLinked = await verifyWhatsAppLink();
     if (!isWhatsAppLinked) {
-      logDisplay.appendLog(
-        "log-container-server",
-        "[Script Control] Cannot start script because WhatsApp link is not active."
-      );
+      console.warn("Script Control", "Cannot start script because WhatsApp link is not active.");
       return;
     }
 
@@ -139,25 +105,13 @@ const scriptControl = {
       if (!res.ok) {
         const errorData = await res.json();
         console.error("Script Control", "Error starting script:", errorData);
-        logDisplay.appendLog(
-          "log-container-server",
-          `Error starting script: ${errorData.error || "Unknown error"}`
-        );
         return;
       }
 
       scriptStatus = true;
       console.info("Script Control", "Script started successfully.");
-      logDisplay.appendLog(
-        "log-container",
-        "[Script Control] Script started successfully."
-      );
     } catch (errorData) {
       console.error("Script Control", "Network error while starting script:", errorData);
-      logDisplay.appendLog(
-        "log-container-server",
-        `Network error while starting script: ${errorData.message}`
-      );
     }
   },
 
@@ -172,25 +126,13 @@ const scriptControl = {
       if (!res.ok) {
         const errorData = await res.json();
         console.error("Script Control", "Error stopping script:", errorData);
-        logDisplay.appendLog(
-          "log-container-server",
-          `Error stopping script: ${errorData.error || "Unknown error"}`
-        );
         return;
       }
 
       scriptStatus = false;
       console.info("Script Control", "Script stopped successfully.");
-      logDisplay.appendLog(
-        "log-container",
-        "[Script Control] Script stopped successfully."
-      );
     } catch (errorData) {
       console.error("Script Control", "Network error while stopping script:", errorData);
-      logDisplay.appendLog(
-        "log-container-server",
-        `Network error while stopping script: ${errorData.message}`
-      );
     }
   },
 

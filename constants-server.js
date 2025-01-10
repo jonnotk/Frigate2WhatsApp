@@ -11,7 +11,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Define constants
-const BASE_DIR = process.env.BASE_DIR || path.resolve(__dirname, ".."); //Using absolute path from project root
+const BASE_DIR = path.resolve(__dirname, ".."); // Using path.resolve() for a more robust absolute path
 const PUBLIC_DIR = path.join(BASE_DIR, "public");
 const DASHBOARD_DIR = path.join(BASE_DIR, "public");
 const COMPONENTS_DIR = path.join(BASE_DIR, "public", "components");
@@ -20,6 +20,7 @@ const LOGS_DIR = path.join(BASE_DIR, "logs");
 const LOG_FILE = path.join(LOGS_DIR, "app.log");
 const DASHBOARD_URL = "/";
 const COMPONENTS_URL = "/components";
+const UTILS_URL = "/utils";
 const MODULES_URL = "/modules";
 const HOST = process.env.HOST || "0.0.0.0";
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
@@ -42,26 +43,10 @@ console.log("LOG_FILE:", LOG_FILE);
 
 // Validate required environment variables
 const requiredEnvVars = [
-  "BASE_DIR",
-  "PUBLIC_DIR",
-  "DASHBOARD_DIR",
-  "COMPONENTS_DIR",
-  "MODULES_DIR",
-  "LOGS_DIR",
-  "LOG_FILE",
-  "DASHBOARD_URL",
-  "COMPONENTS_URL",
-  "MODULES_URL",
-  "HOST",
-  "PORT",
-  "WS_URL",
-  "API_BASE_URL",
   "MQTT_HOST",
   "MQTT_USERNAME",
   "MQTT_PASSWORD",
-  "MAX_RETRIES",
-  "RETRY_DELAY",
-  "CHROMIUM_PATH",
+  "CHROMIUM_PATH"
 ];
 
 for (const envVar of requiredEnvVars) {
@@ -83,6 +68,7 @@ export {
   LOG_FILE,
   DASHBOARD_URL,
   COMPONENTS_URL,
+  UTILS_URL,
   MODULES_URL,
   HOST,
   PORT,

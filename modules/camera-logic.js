@@ -9,7 +9,7 @@ import { broadcast } from "./websocket-server.js";
 import { setupLogging } from "../utils/logger.js";
 
 // Initialize logging
-const { debug, info, warn, error } = setupLogging();
+const { info, warn, error, debug } = setupLogging();
 
 // Add a camera to the list if it doesn't already exist
 function addCamera(camera) {
@@ -28,31 +28,11 @@ function addCamera(camera) {
 
 // Assign a camera to a WhatsApp group
 function assignCameraToGroup(camera, group) {
-    const mappings = getCameraGroupMappings();
-    mappings[camera] = group;
-    setCameraGroupMappings(mappings);
-    info("CameraLogic", `Assigned camera ${camera} to group ${group}`);
-    broadcast("camera-group-updated", mappings);
+  const mappings = getCameraGroupMappings();
+  mappings[camera] = group;
+  setCameraGroupMappings(mappings);
+  info("CameraLogic", `Assigned camera ${camera} to group ${group}`);
+  broadcast("camera-group-updated", mappings);
 }
 
-async function handleAssignCameraToGroup(camera, group) {
-    try {
-      const response = await fetch("/api/assign-camera", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ camera, group }),
-      });
-  
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Unknown error");
-      }
-  
-      info("Camera Logic", `Camera ${camera} assigned to group ${group}`);
-    } catch (errorData) {
-      error("Camera Logic", "Error during group assignment:", errorData);
-    }
-  }
-  
-
-export { addCamera, assignCameraToGroup, getCameraGroupMappings, handleAssignCameraToGroup };
+export { addCamera, assignCameraToGroup, getCameraGroupMappings };

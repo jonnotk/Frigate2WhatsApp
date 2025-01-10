@@ -32,7 +32,7 @@ const qrModal = {
     }
 
     // Use a hardcoded path for the loading GIF
-    const loadingGifPath = "/assets/loading.gif"; // Ensure this path is correct
+    const loadingGifPath = "/assets/loading.gif"; // Ensure this path is correct and that you have a loading.gif file
     qrImageElement.src = loadingGifPath;
     qrImageElement.alt = "Waiting for QR code...";
     console.warn("QR-Modal", "Waiting for QR Code...");
