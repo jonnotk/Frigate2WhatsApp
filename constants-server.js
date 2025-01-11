@@ -11,7 +11,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Define constants
-const BASE_DIR = path.resolve(__dirname, ".."); // Using path.resolve() for a more robust absolute path
+const BASE_DIR = process.env.BASE_DIR; // No changes needed here as .env has the correct value
 const PUBLIC_DIR = path.join(BASE_DIR, "public");
 const DASHBOARD_DIR = path.join(BASE_DIR, "public");
 const COMPONENTS_DIR = path.join(BASE_DIR, "public", "components");

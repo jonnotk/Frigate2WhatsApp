@@ -4,12 +4,12 @@ import {
   MQTT_HOST,
   MQTT_USERNAME,
   MQTT_PASSWORD,
-  CAMERA_COLOR,
   DEBUG,
 } from "../constants-server.js";
 import { getCameras, setCameras } from "../state.js";
 import { setupLogging } from "../utils/logger.js";
 import { addCamera } from "./camera-logic.js";
+import { broadcast } from "./websocket-server.js";
 
 // Initialize logging
 const { info, warn, error, debug } = setupLogging();

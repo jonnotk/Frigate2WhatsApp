@@ -14,18 +14,17 @@ import {
   getAccountInfo,
   userGroups,
 } from "./whatsapp.js";
-import { getIsSubscribed, getIsSubscribing, setIsSubscribing, setConnectionState } from "../state.js";
+import { getIsSubscribed, getIsSubscribing, setIsSubscribing, getConnectionState } from "../state.js";
 import {
   DASHBOARD_URL,
-  PORT,
   WS_URL,
   BASE_DIR,
-} from "../constants-server.js"; // Now using constants from constants-server.js
+} from "../constants-server.js";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { setupLogging } from "../utils/logger.js";
-import { handleAssignCameraToGroup } from "./camera-logic.js";
+import { handleAssignCameraToGroup } from "./api-endpoints.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -158,7 +157,7 @@ function sendInitialStatus(ws) {
     connected: isConnected(),
     account: getAccountInfo(),
     subscribed: getIsSubscribed(),
-    state: getWhatsAppConnectionState(), // Get connection state from whatsapp.js
+    state: getConnectionState(), // Get connection state from state.js
   };
 
   ws.send(
@@ -167,13 +166,6 @@ function sendInitialStatus(ws) {
       data: statusData,
     })
   );
-}
-
-/**
- * Get the current connection state from whatsapp.js
- */
-function getWhatsAppConnectionState() {
-  return getIsSubscribed() ? (isConnected() ? "connected" : "disconnected") : "unsubscribed";
 }
 
 /**

@@ -1,5 +1,4 @@
 // public/components/camera-mapping.js
-import { getCameras, getCameraGroupMappings } from "../../state.js";
 
 const cameraMapping = {
   cameraListContainer: null, // Reference to the camera list container

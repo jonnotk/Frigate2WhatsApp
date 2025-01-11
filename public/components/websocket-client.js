@@ -10,7 +10,7 @@ import {
   setWaConnected,
   getWaAccount,
   setWaAccount,
-} from "../state.js";
+} from "/../../state.js";
 import {
   initWhatsAppConnection,
   handleWhatsAppMessage,
@@ -42,7 +42,6 @@ async function initializeSocket() {
     connectWebSocket(sessionId);
   } catch (errorData) {
     console.error("WebSocket-Client", "Error initializing WebSocket:", errorData);
-    // Consider retrying or displaying an error message to the user
   }
 }
 
@@ -184,7 +183,7 @@ function handleWebSocketMessage(message) {
 
     case "new-camera":
       console.info("WebSocket-Client",`New camera detected: ${message.data.camera}`);
-      cameraMapping.updateCameraList(getCameras());
+      cameraMapping.loadCameras();
       break;
 
     case "wa-subscribed":
@@ -236,9 +235,9 @@ function handleWebSocketMessage(message) {
       break;
 
     case "wa-groups":
-      console.info("WebSocket-Client",`WhatsApp groups updated:`, message.data);
-      updateGroupList(message.data);
-      break;
+        console.info("WebSocket-Client", "Received updated group list");
+        updateGroupList(message.data);
+        break;
       
     case "wa-group-joined":
         console.info("WebSocket-Client", `New group joined:`, message.data);
@@ -260,110 +259,110 @@ function handleWebSocketMessage(message) {
         updateGroupMembershipRequest(message.data);
         break;
 
-    case "wa-authorizing":
-      console.info("WebSocket-Client",`WhatsApp authorizing: ${message.data.authorizing}`);
-      updateStatusUI("awaiting_qr"); // Update button to "Awaiting QR"
-      break;
-
-    case "session-restored":
-      console.info("WebSocket-Client",`Session restored.`);
-      fetchInitialStatuses(); // Re-fetch initial statuses after restoring a session
-      break;
-
-    case "config":
-      console.info("WebSocket-Client",`Config received:`, message.data);
-      wsUrl = message.data.wsUrl; // Update wsUrl
-      initializeSocket(); // reconnect with the correct URL
-      break;
-
-    case "camera-group-updated":
-      console.info("WebSocket-Client", `Camera group mapping updated:`, message.data);
-      cameraMapping.loadCameras(); // Refresh the camera list
-      break;
-
-    default:
-      console.warn("WebSocket-Client",`Unknown event received: ${message.event}`);
-  }
-}
-/**
- * Updates the WhatsApp connection status in the UI.
- * @param {boolean} connected - WhatsApp connection status.
- */
-function updateWhatsAppStatus(connected) {
-  const statusElement = document.getElementById("wa-status-value");
-  if (statusElement) {
-    statusElement.textContent = `${connected ? "Connected" : "Disconnected"}`;
-    statusElement.className = connected ? "connected" : "disconnected";
-    console.info("WebSocket-Client",`WhatsApp status updated in UI: ${connected ? "Connected" : "Disconnected"}`);
-  } else {
-    console.error("WebSocket-Client",
-      `WhatsApp status element not found in UI.`
-    );
-  }
-}
-
-/**
- * Updates the script running status in the UI.
- * @param {boolean} running - Script running status.
- */
-function updateScriptStatus(running) {
-  const scriptElement = document.getElementById("script-status");
-  if (scriptElement) {
-    scriptElement.textContent = `Script: ${running ? "Running" : "Stopped"}`;
-    console.info("WebSocket-Client",`Script status updated in UI: ${running ? "Running" : "Stopped"}`);
-  } else {
-    console.error("WebSocket-Client",
-      `Script status element not found in UI.`
-    );
-  }
-}
-
-/**
- * Updates the group list in the UI with the provided groups data.
- * @param {Array} groups - Array of group objects with 'id' and 'name' properties.
- */
-function updateGroupList(groups) {
-  const groupListElement = document.getElementById("group-list");
-
-  if (groupListElement) {
-    groupListElement.innerHTML = ""; // Clear existing list
-
-    groups.forEach((group) => {
-      const listItem = document.createElement("li");
-      listItem.textContent = group.name + (group.isMember ? " (Member)" : "") + (group.isAdmin ? " (Admin)" : "");
-      groupListElement.appendChild(listItem);
-    });
-
-    console.info("WebSocket-Client",`Group list updated in UI.`);
-  } else {
-    console.error("WebSocket-Client",
-      `Group list element not found in UI.`
-    );
-  }
-}
-
-/**
- * Updates the UI to reflect a new group membership request.
- * @param {object} request - The group membership request data.
- */
-function updateGroupMembershipRequest(request) {
-    const groupRequestsList = document.getElementById("membership-requests-list");
-    if (groupRequestsList) {
-      const listItem = document.createElement("li");
-      listItem.textContent = `Request to join ${request.groupName} by ${request.userName}`;
-      // Potentially add buttons or links to approve/reject the request
-      groupRequestsList.appendChild(listItem);
-    } else {
-      console.error("WebSocket-Client", "Group membership requests list not found in UI.");
+        case "wa-authorizing":
+          console.info("WebSocket-Client",`WhatsApp authorizing: ${message.data.authorizing}`);
+          updateStatusUI("awaiting_qr"); // Update button to "Awaiting QR"
+          break;
+    
+        case "session-restored":
+          console.info("WebSocket-Client",`Session restored.`);
+          fetchInitialStatuses(); // Re-fetch initial statuses after restoring a session
+          break;
+    
+        case "config":
+          console.info("WebSocket-Client",`Config received:`, message.data);
+          wsUrl = message.data.wsUrl; // Update wsUrl
+          initializeSocket(); // reconnect with the correct URL
+          break;
+    
+        case "camera-group-updated":
+          console.info("WebSocket-Client", `Camera group mapping updated:`, message.data);
+          cameraMapping.loadCameras(); // Refresh the camera list
+          break;
+    
+        default:
+          console.warn("WebSocket-Client",`Unknown event received: ${message.event}`);
+      }
     }
-  }
-
-/**
- * Generate a unique session ID.
- */
-function generateSessionId() {
-  // Simple example using Math.random (not cryptographically secure)
-  return "s" + Math.random().toString(36).substring(2, 15);
-}
-
-export { initializeSocket };
+    /**
+     * Updates the WhatsApp connection status in the UI.
+     * @param {boolean} connected - WhatsApp connection status.
+     */
+    function updateWhatsAppStatus(connected) {
+      const statusElement = document.getElementById("wa-status-value");
+      if (statusElement) {
+        statusElement.textContent = `${connected ? "Connected" : "Disconnected"}`;
+        statusElement.className = connected ? "connected" : "disconnected";
+        console.info("WebSocket-Client",`WhatsApp status updated in UI: ${connected ? "Connected" : "Disconnected"}`);
+      } else {
+        console.error("WebSocket-Client",
+          `WhatsApp status element not found in UI.`
+        );
+      }
+    }
+    
+    /**
+     * Updates the script running status in the UI.
+     * @param {boolean} running - Script running status.
+     */
+    function updateScriptStatus(running) {
+      const scriptElement = document.getElementById("script-status");
+      if (scriptElement) {
+        scriptElement.textContent = `Script: ${running ? "Running" : "Stopped"}`;
+        console.info("WebSocket-Client",`Script status updated in UI: ${running ? "Running" : "Stopped"}`);
+      } else {
+        console.error("WebSocket-Client",
+          `Script status element not found in UI.`
+        );
+      }
+    }
+    
+    /**
+     * Updates the group list in the UI with the provided groups data.
+     * @param {Array} groups - Array of group objects with 'id' and 'name' properties.
+     */
+    function updateGroupList(groups) {
+      const groupListElement = document.getElementById("group-list");
+    
+      if (groupListElement) {
+        groupListElement.innerHTML = ""; // Clear existing list
+    
+        groups.forEach((group) => {
+          const listItem = document.createElement("li");
+          listItem.textContent = group.name + (group.isMember ? " (Member)" : "") + (group.isAdmin ? " (Admin)" : "");
+          groupListElement.appendChild(listItem);
+        });
+    
+        console.info("WebSocket-Client",`Group list updated in UI.`);
+      } else {
+        console.error("WebSocket-Client",
+          `Group list element not found in UI.`
+        );
+      }
+    }
+    
+    /**
+     * Updates the UI to reflect a new group membership request.
+     * @param {object} request - The group membership request data.
+     */
+    function updateGroupMembershipRequest(request) {
+        const groupRequestsList = document.getElementById("membership-requests-list");
+        if (groupRequestsList) {
+          const listItem = document.createElement("li");
+          listItem.textContent = `Request to join ${request.groupName} by ${request.userName}`;
+          // Potentially add buttons or links to approve/reject the request
+          groupRequestsList.appendChild(listItem);
+        } else {
+          console.error("WebSocket-Client", "Group membership requests list not found in UI.");
+        }
+      }
+    
+    /**
+     * Generate a unique session ID.
+     */
+    function generateSessionId() {
+      // Simple example using Math.random (not cryptographically secure)
+      return "s" + Math.random().toString(36).substring(2, 15);
+    }
+    
+    export { initializeSocket };

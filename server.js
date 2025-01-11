@@ -10,17 +10,17 @@ import {
   HOST,
   PORT,
   LOG_FILE,
-  DASHBOARD_DIR,
   COMPONENTS_URL,
   LOGS_DIR,
   BASE_DIR,
-  UTILS_URL
+  UTILS_URL,
+  DASHBOARD_URL
 } from "./constants-server.js";
 import { setupLogging } from "./utils/logger.js";
 import { initializeWhatsApp } from "./modules/whatsapp.js";
 
-// Set up logging
-const { log, info, error } = setupLogging(LOG_FILE);
+// Set up logging and get the logger functions
+const { log, info, warn, error } = setupLogging(LOG_FILE);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -39,6 +39,11 @@ app.use(COMPONENTS_URL, express.static(path.join(BASE_DIR, "public", "components
 app.use(LOGS_DIR, express.static(path.join(BASE_DIR, "logs")));
 app.use(UTILS_URL, express.static(path.join(BASE_DIR, "utils")));
 
+// Serve index.html for the dashboard route
+app.get(DASHBOARD_URL, (req, res) => {
+  res.sendFile(path.join(BASE_DIR, "public", "index.html"));
+});
+
 // Parse JSON request bodies
 app.use(express.json());
 
@@ -49,8 +54,8 @@ app.get("/api/ws-config", (req, res) => {
   });
 });
 
-// Setup API Endpoints
-setupApiEndpoints(app, log);
+// Setup API Endpoints passing the logger functions
+setupApiEndpoints(app, { log, info, warn, error });
 
 // Initialize WebSocket server
 initializeWebSocket(server);

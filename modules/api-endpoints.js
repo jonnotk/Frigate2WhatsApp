@@ -6,7 +6,12 @@ import { spawn } from "child_process";
 import { startScript, stopScript, getScriptProcess } from "./script-manager.js";
 import { isConnected, getAccountInfo, getQrCodeData, unlinkWhatsApp } from "./whatsapp.js";
 import { DASHBOARD_DIR, LOGS_DIR, LOG_FILE, BASE_DIR } from "../constants-server.js";
-import { getCameraGroupMappings, getCameras, getIsSubscribed, setCameraGroupMappings } from "../state.js";
+import {
+  getCameraGroupMappings,
+  getCameras,
+  getIsSubscribed,
+  setCameraGroupMappings,
+} from "../state.js";
 import { broadcast } from "./websocket-server.js";
 import { setupLogging } from "../utils/logger.js";
 import { assignCameraToGroup } from "./camera-logic.js";
@@ -15,7 +20,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Initialize logging
-const { log, info, warn, error } = setupLogging();
+const { log, info, warn, error } = setupLogging(LOG_FILE);
 
 /**
  * Validate API request payload.
@@ -35,7 +40,32 @@ function validatePayload(payload, requiredFields) {
   return true;
 }
 
-export function setupApiEndpoints(app, logger) {
+// Assign a camera to a WhatsApp group
+async function handleAssignCameraToGroup(camera, group) {
+  info("api-endpoints", `Assigning camera ${camera} to group ${group}...`);
+  try {
+    // Validate the camera and group (add more robust validation as needed)
+    if (!camera || !group) {
+      throw new Error("Invalid camera or group provided.");
+    }
+
+    // Update the camera group mappings in the state
+    assignCameraToGroup(camera, group); // Ensure this function is synchronous or properly awaited
+
+    // Broadcast the update to all connected clients
+    broadcast("camera-group-updated", getCameraGroupMappings());
+
+    info(
+      "api-endpoints",
+      `Camera ${camera} assigned to group ${group} successfully.`
+    );
+  } catch (err) {
+    error("api-endpoints", `Error assigning camera to group: ${err.message}`);
+    throw err; // Re-throw the error to be handled by the caller
+  }
+}
+
+function setupApiEndpoints(app) {
   app.get("/api/qr", (req, res) => {
     try {
       const qrCodeData = getQrCodeData();
@@ -64,6 +94,23 @@ export function setupApiEndpoints(app, logger) {
     res.json({ success: true, data: cameras });
   });
 
+  app.get("/api/camera-group-mappings", (req, res) => {
+    info("Api-endpoints", "Camera group mappings requested");
+    const mappings = getCameraGroupMappings();
+    if (!mappings) {
+      warn("Api-endpoints", "No camera group mappings found");
+      return res
+        .status(404)
+        .json({ success: false, error: "No camera group mappings found" });
+    }
+    info(
+      "Api-endpoints",
+      `Camera group mappings fetched successfully:`,
+      mappings
+    );
+    res.json({ success: true, data: mappings });
+  });
+
   app.post("/api/wa/unlink", async (req, res) => {
     try {
       await unlinkWhatsApp();
@@ -73,7 +120,9 @@ export function setupApiEndpoints(app, logger) {
       res.json({ success: true });
     } catch (error) {
       error("Api-endpoints", `Error unlinking WhatsApp: ${error}`);
-      res.status(500).json({ success: false, error: "Failed to unlink WhatsApp" });
+      res
+        .status(500)
+        .json({ success: false, error: "Failed to unlink WhatsApp" });
     }
   });
 
@@ -97,51 +146,59 @@ export function setupApiEndpoints(app, logger) {
       const isSubscribed = getIsSubscribed();
       res.json({ success: true, data: { subscribed: isSubscribed } });
     } catch (error) {
-      error("Api-endpoints", `Error checking subscription status: ${error}`);
+      error(
+        "Api-endpoints",
+        `Error checking subscription status: ${error}`
+      );
       res
         .status(500)
-        .json({ success: false, error: "Failed to check subscription status" });
+        .json({
+          success: false,
+          error: "Failed to check subscription status",
+        });
     }
   });
 
-  app.post("/api/assign-camera", (req, res) => {
+  app.post("/api/assign-camera", async (req, res) => {
     const { camera, group } = req.body;
-  
     if (!validatePayload(req.body, ["camera", "group"])) {
       warn("Api-endpoints", "Invalid request: camera and group are required");
-      return res.status(400).json({ success: false, error: "Camera and group are required" });
+      return res
+        .status(400)
+        .json({ success: false, error: "Camera and group are required" });
     }
-  
     try {
-      assignCameraToGroup(camera, group);
-      info("Api-endpoints", `Assigned camera ${camera} to group ${group}`);
+      await handleAssignCameraToGroup(camera, group);
+      info("Api-endpoints", `Camera ${camera} assigned to group ${group}`);
       res.json({ success: true });
     } catch (error) {
-      error("Api-endpoints", `Error assigning camera to group: ${error.message}`);
+      error(
+        "Api-endpoints",
+        `Error assigning camera to group: ${error.message}`
+      );
       res.status(500).json({ success: false, error: error.message });
     }
   });
-  
 
   app.post("/api/script/start", (req, res) => {
     info("Api-endpoints", "Starting script...");
-  
+
     if (getScriptProcess()) {
       warn("Api-endpoints", "Script is already running.");
       return res
         .status(400)
         .json({ success: false, error: "Script is already running." });
     }
-  
+
     try {
-        startScript(log); // Assuming startScript is adapted to use the logger
-        info("Api-endpoints", "Script started successfully.");
-        res.json({ success: true, message: "Script started successfully." });
+      startScript();
+      info("Api-endpoints", "Script started successfully.");
+      res.json({ success: true, message: "Script started successfully." });
     } catch (error) {
-        error("Api-endpoints", `Error starting script: ${error.message}`);
-        res.status(500).json({ success: false, error: error.message });
+      error("Api-endpoints", `Error starting script: ${error.message}`);
+      res.status(500).json({ success: false, error: error.message });
     }
-});
+  });
 
   app.post("/api/script/stop", (req, res) => {
     info("Api-endpoints", "Stopping script...");
@@ -154,7 +211,7 @@ export function setupApiEndpoints(app, logger) {
     }
 
     try {
-      stopScript(log); // Assuming stopScript is also adapted to use the logger
+      stopScript();
       info("Api-endpoints", "Script stopped successfully.");
       res.json({ success: true, message: "Script stopped successfully." });
     } catch (error) {
@@ -189,12 +246,17 @@ export function setupApiEndpoints(app, logger) {
     const filename = req.params.filename;
     const allowedFiles = ["index.html", "server.js", "whatsapp.js"];
     if (!allowedFiles.includes(filename)) {
-      warn("Api-endpoints",`Invalid filename requested for editing: ${filename}`);
-      return res.status(400).json({ success: false, error: "Invalid filename" });
+      warn(
+        "Api-endpoints",
+        `Invalid filename requested for editing: ${filename}`
+      );
+      return res
+        .status(400)
+        .json({ success: false, error: "Invalid filename" });
     }
-  
+
     const filePath = path.join(BASE_DIR, filename);
-  
+
     try {
       const data = await fs.promises.readFile(filePath, "utf8"); // Use async version
       info("Api-endpoints", `Sending content of file: ${filename}`);
@@ -204,17 +266,22 @@ export function setupApiEndpoints(app, logger) {
       res.status(500).json({ success: false, error: "Error reading file" });
     }
   });
-  
+
   app.post("/dashboard/api/save", async (req, res) => {
     const { filename, content } = req.body;
     const allowedFiles = ["index.html", "server.js", "whatsapp.js"];
     if (!allowedFiles.includes(filename)) {
-      warn("Api-endpoints",`Invalid filename provided for saving: ${filename}`);
-      return res.status(400).json({ success: false, error: "Invalid filename" });
+      warn(
+        "Api-endpoints",
+        `Invalid filename provided for saving: ${filename}`
+      );
+      return res
+        .status(400)
+        .json({ success: false, error: "Invalid filename" });
     }
-  
+
     const filePath = path.join(BASE_DIR, filename); // Use the correct path
-  
+
     try {
       await fs.promises.writeFile(filePath, content, "utf8"); // Use async version
       info("Api-endpoints", `File ${filename} saved successfully.`);
@@ -227,3 +294,6 @@ export function setupApiEndpoints(app, logger) {
 
   info("Api-endpoints", "Endpoints initialized.");
 }
+
+// Export only once at the end:
+export { setupApiEndpoints, handleAssignCameraToGroup };

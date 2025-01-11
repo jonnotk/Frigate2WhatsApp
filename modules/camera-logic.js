@@ -9,7 +9,7 @@ import { broadcast } from "./websocket-server.js";
 import { setupLogging } from "../utils/logger.js";
 
 // Initialize logging
-const { info, warn, error, debug } = setupLogging();
+const { debug, info, warn, error } = setupLogging();
 
 // Add a camera to the list if it doesn't already exist
 function addCamera(camera) {
@@ -28,11 +28,11 @@ function addCamera(camera) {
 
 // Assign a camera to a WhatsApp group
 function assignCameraToGroup(camera, group) {
-  const mappings = getCameraGroupMappings();
-  mappings[camera] = group;
-  setCameraGroupMappings(mappings);
-  info("CameraLogic", `Assigned camera ${camera} to group ${group}`);
-  broadcast("camera-group-updated", mappings);
+    const mappings = getCameraGroupMappings();
+    mappings[camera] = group;
+    setCameraGroupMappings(mappings);
+    info("CameraLogic", `Assigned camera ${camera} to group ${group}`);
+    broadcast("camera-group-updated", mappings);
 }
 
 export { addCamera, assignCameraToGroup, getCameraGroupMappings };
