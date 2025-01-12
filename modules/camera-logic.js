@@ -11,13 +11,15 @@ import { setupLogging } from "../utils/logger.js";
 // Initialize logging
 const { info, error, debug } = setupLogging();
 
-// Add a camera to the list if it doesn't already exist
-function addCamera(camera) {
+// Function to handle new cameras
+function handleNewCamera(camera) {
   const cameras = getCameras();
-
-  if (!cameras.includes(camera)) {
-      setCameras([...cameras, camera]); // Update state and notify
-      info("CameraLogic", `Added new camera: ${camera}`);
+  if (!cameras.has(camera)) {
+      info("CameraLogic", `Adding new camera: ${camera}`);
+      // Create a new Map with the added camera and copy existing details
+      const updatedCameras = new Map(cameras);
+      updatedCameras.set(camera, {}); // Initialize with an empty object for future details
+      setCameras(Array.from(updatedCameras.keys())); // Update state and notify
   } else {
       debug("CameraLogic", `Camera already exists: ${camera}`);
   }
@@ -36,4 +38,4 @@ function assignCameraToGroup(camera, group) {
   }
 }
 
-export { addCamera, assignCameraToGroup, getCameraGroupMappings };
+export { handleNewCamera, assignCameraToGroup, getCameraGroupMappings };

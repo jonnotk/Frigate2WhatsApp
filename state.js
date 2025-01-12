@@ -1,11 +1,13 @@
 // state.js
 
+import { isDeepEqual } from "./utils/utils.js";
+
 // Use a simple locking mechanism to prevent concurrent updates
 let isUpdating = false;
 
 // Encapsulate global state variables
 const state = {
-    cameras: [], // Ensure cameras is initialized as an empty array
+    cameras: new Map(), // Changed to a Map to store cameras and their details
     scriptProcess: null,
     waConnected: false,
     waAccount: { name: null, number: null },
@@ -54,25 +56,27 @@ export const notifyStateChange = async (changeType, newData) => {
     emit(changeType, newData);
 };
 
-// Original isDeepEqual implementation (adapted for front-end)
-const isDeepEqual = (function () {
-    // ... unchanged code for isDeepEqual ...
-})();
-
 // Getters and setters for controlled access
 
 export const getCameras = () => state.cameras;
+
 export const setCameras = (cameras) => {
     if (isUpdating) return;
     isUpdating = true;
 
-    // Filter out duplicate cameras
-    const uniqueCameras = Array.from(new Set(cameras));
+    // Convert Map keys to an array for comparison
+    const currentCameras = Array.from(state.cameras.keys());
 
     // Check if there's an actual change in the camera list
-    if (!isDeepEqual(state.cameras, uniqueCameras)) {
-        state.cameras = uniqueCameras;
-        notifyStateChange("cameras-update", state.cameras);
+    if (!isDeepEqual(currentCameras, cameras)) {
+        // Update the cameras Map with new entries
+        const newCameraMap = new Map();
+        cameras.forEach(camera => {
+            newCameraMap.set(camera, state.cameras.get(camera) || {});
+        });
+
+        state.cameras = newCameraMap;
+        notifyStateChange("cameras-update", Array.from(state.cameras.keys()));
     }
 
     isUpdating = false;

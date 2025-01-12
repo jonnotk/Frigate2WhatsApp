@@ -12,45 +12,11 @@ import {
   } from "../state.js";
   import { showQRModal } from "./qr-modal.js";
   
-  // State management
-  // let connectionState = "disconnected";
-  
   /**
    * Updates the connection state and logs the change.
    * @param {string} state - The new connection state.
    */
   function updateConnectionState(state) {
-      // const validStates = [
-      //     "initializing",
-      //     "qr_received",
-      //     "awaiting_qr",
-      //     "loading",
-      //     "failed_restore",
-      //     "timeout",
-      //     "connected",
-      //     "authenticated",
-      //     "disconnected",
-      //     "auth_failure",
-      //     "initialization_failed",
-      //     "destroyed",
-      //     "conflict",
-      //     "unlaunched",
-      //     "unpaired",
-      //     "unpaired_idle",
-      //     "not_ready",
-      //     "proxy_error",
-      //     "subscribing",
-      //     "unsubscribing"
-      // ];
-  
-      // if (!validStates.includes(state)) {
-      //     const errorMessage = `Unknown connection state received: ${state}`;
-      //     console.error("WhatsApp-Connection", errorMessage);
-      //     sendWebSocketMessage("error", { message: errorMessage });
-      //     return;
-      // }
-  
-      // connectionState = state;
       console.info("WhatsApp-Connection", `Connection state updated: ${state}`);
       updateStatusUI(state);
   }
@@ -271,46 +237,50 @@ import {
   }
   
   /**
- * Updates the connection state in the UI.
- * @param {string} state - The new connection state.
- */
-function updateStatusUI(state) {
-    const stateElement = document.getElementById("wa-state");
-    const statusSpan = document.getElementById("status");
+   * Updates the connection state in the UI.
+   * @param {string} state - The new connection state.
+   */
+  function updateStatusUI(state) {
+      const stateElement = document.getElementById("wa-state");
+      const statusSpan = document.getElementById("status");
   
-    if (stateElement && statusSpan) {
-      statusSpan.textContent = `${state}`;
-      statusSpan.className = ''; // Reset class names
+      if (stateElement && statusSpan) {
+          statusSpan.textContent = `${state}`;
+          statusSpan.className = ''; // Reset class names
   
-      // Add visual cues based on state
-      switch (state) {
-        case "connected":
-          statusSpan.classList.add("connected");
-          break;
-        case "disconnected":
-          statusSpan.classList.add("disconnected");
-          break;
-        case "awaiting_qr":
-        case "connecting":
-        case "loading":
-        case "authenticated":
-        case "subscribing":
-          statusSpan.classList.add("connecting");
-          break;
-        case "initialization_failed":
-        case "authentication_failed":
-        case "proxy_error":
-        case "unsubscribing":
-          statusSpan.classList.add("error");
-          break;
-        default:
-          statusSpan.classList.add("unknown");
-      }
+          // Add visual cues based on state
+          switch (state) {
+              case "connected":
+                  statusSpan.classList.add("connected");
+                  break;
+              case "disconnected":
+                  statusSpan.classList.add("disconnected");
+                  break;
+              case "awaiting_qr":
+              case "connecting":
+              case "loading":
+              case "authenticated":
+              case "subscribing":
+                  statusSpan.classList.add("connecting");
+                  break;
+              case "initialization_failed":
+              case "authentication_failed":
+              case "proxy_error":
+              case "unsubscribing":
+                  statusSpan.classList.add("error");
+                  break;
+              case "running":
+              case "stopped":
+                  statusSpan.classList.add(state);
+                  break;
+              default:
+                  statusSpan.classList.add("unknown");
+          }
   
-      console.info("WhatsApp-Connection",`Connection state updated in UI: ${state}`);
-    } else {
-      console.warn("WhatsApp-Connection","Connection state element (wa-state or status) not found in UI.");
-    }
+          console.info("WhatsApp-Connection",`Connection state updated in UI: ${state}`);
+      } else {
+          console.warn("WhatsApp-Connection","Connection state element (wa-state or status) not found in UI.");
+      }
   }
   
   /**
@@ -323,6 +293,22 @@ function updateStatusUI(state) {
         authorizeButton.textContent = connected ? "Unauthorize" : "Authorize";
         authorizeButton.disabled = false; // Enable the button in either case
       }
+  }
+  
+  /**
+   * Updates the script status in the UI.
+   * @param {boolean} running - Script running status.
+   */
+  function updateScriptStatus(running) {
+      const scriptElement = document.getElementById("script-status");
+      if (scriptElement) {
+          scriptElement.textContent = `Script: ${running ? "Running" : "Stopped"}`;
+          console.info("WhatsApp-Connection",`Script status updated in UI: ${running ? "Running" : "Stopped"}`);
+      } else {
+          console.error("WhatsApp-Connection",
+              `Script status element not found in UI.`
+          );
+      }
   }
   
   export {

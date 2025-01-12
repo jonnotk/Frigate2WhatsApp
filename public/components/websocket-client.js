@@ -2,23 +2,24 @@
 import { qrModal } from "./qr-modal.js";
 import { cameraMapping } from "./camera-mapping.js";
 import {
-  getIsSubscribed,
-  setIsSubscribed,
-  getIsSubscribing,
-  setIsSubscribing,
-  getWaConnected,
-  setWaConnected,
-  getWaAccount,
-  setWaAccount,
-  on,
+    getIsSubscribed,
+    setIsSubscribed,
+    getIsSubscribing,
+    setIsSubscribing,
+    getWaConnected,
+    setWaConnected,
+    getWaAccount,
+    setWaAccount,
+    on,
 } from "../state.js";
 import {
-  initializeWhatsAppConnection,
-  handleWhatsAppMessage,
-  updateStatusUI,
+  initializeWhatsAppConnection,
+  handleWhatsAppMessage,
+  updateStatusUI,
 } from "./whatsapp-connection.js";
 
 let socket = null;
+let wsUrl = null; // moved variable declaration outside of function
 
 async function initializeSocket() {
   try {
@@ -91,59 +92,59 @@ function connectWebSocket(sessionId, wsUrl) {
  */
 async function fetchInitialStatuses() {
 
-  // Fetch WhatsApp status
-  try {
-    const waStatusResponse = await fetch("/api/wa/status");
-    const waStatusData = await waStatusResponse.json();
+    // Fetch WhatsApp status
+    try {
+        const waStatusResponse = await fetch("/api/wa/status");
+        const waStatusData = await waStatusResponse.json();
 
-    if (waStatusData.success) {
-      console.info("WebSocket-Client",`Initial WhatsApp status: ${waStatusData.data}`);
-      updateWhatsAppStatus(waStatusData.data.connected);
-      setWaAccount(waStatusData.data.account);
+        if (waStatusData.success) {
+            console.info("WebSocket-Client", `Initial WhatsApp status: ${waStatusData.data}`);
+            // updateWhatsAppStatus(waStatusData.data.connected); Removed 
+            setWaAccount(waStatusData.data.account);
 
-      // Check and update waConnected based on the fetched status
-      if (waStatusData.data.connected) {
-        setWaConnected(true);
-      } else {
-        setWaConnected(false);
-      }
+            // Check and update waConnected based on the fetched status
+            if (waStatusData.data.connected) {
+                setWaConnected(true);
+            } else {
+                setWaConnected(false);
+            }
 
-      // Update connection state only if wa-status is successfully fetched
-      if (waStatusData.data && waStatusData.data.state) {
-        updateStatusUI(waStatusData.data.state);
-      }
+            // Update connection state only if wa-status is successfully fetched
+            if (waStatusData.data && waStatusData.data.state) {
+                updateStatusUI(waStatusData.data.state);
+            }
 
-      // Explicitly check subscription status
-      const subscriptionResponse = await fetch("/api/wa/subscription-status");
-      const subscriptionData = await subscriptionResponse.json();
+            // Explicitly check subscription status
+            const subscriptionResponse = await fetch("/api/wa/subscription-status");
+            const subscriptionData = await subscriptionResponse.json();
 
-      if (subscriptionData.success) {
-        setIsSubscribed(subscriptionData.data.subscribed);
-        console.info("WebSocket-Client",`Subscription status updated to: ${subscriptionData.data.subscribed}`);
-      } else {
-        console.warn("WebSocket-Client",`Failed to fetch subscription status: ${subscriptionData.error}`);
-      }
-    } else {
-      console.warn("WebSocket-Client",`Failed to fetch WhatsApp status: ${waStatusData.error}`);
-    }
-  } catch (errorData) {
-    console.error("WebSocket-Client",`Error fetching WhatsApp status: ${errorData}`);
-  }
+            if (subscriptionData.success) {
+                setIsSubscribed(subscriptionData.data.subscribed);
+                console.info("WebSocket-Client", `Subscription status updated to: ${subscriptionData.data.subscribed}`);
+            } else {
+                console.warn("WebSocket-Client", `Failed to fetch subscription status: ${subscriptionData.error}`);
+            }
+        } else {
+            console.warn("WebSocket-Client", `Failed to fetch WhatsApp status: ${waStatusData.error}`);
+        }
+    } catch (errorData) {
+        console.error("WebSocket-Client", `Error fetching WhatsApp status: ${errorData}`);
+    }
 
-  // Fetch script status
-  try {
-    const scriptStatusResponse = await fetch("/api/script/status");
-    const scriptStatusData = await scriptStatusResponse.json();
+    // Fetch script status
+    try {
+        const scriptStatusResponse = await fetch("/api/script/status");
+        const scriptStatusData = await scriptStatusResponse.json();
 
-    if (scriptStatusData.success) {
-      console.info("WebSocket-Client",`Initial script status: ${scriptStatusData.data}`);
-      updateScriptStatus(scriptStatusData.data.running);
-    } else {
-      console.warn("WebSocket-Client",`Failed to fetch script status: ${scriptStatusData.error}`);
-    }
-  } catch (errorData) {
-    console.error("WebSocket-Client",`Error fetching script status: ${errorData}`);
-  }
+        if (scriptStatusData.success) {
+            console.info("WebSocket-Client", `Initial script status: ${scriptStatusData.data}`);
+            updateStatusUI(scriptStatusData.data.running ? "running" : "stopped"); // Use updateStatusUI for script status as well
+        } else {
+            console.warn("WebSocket-Client", `Failed to fetch script status: ${scriptStatusData.error}`);
+        }
+    } catch (errorData) {
+        console.error("WebSocket-Client", `Error fetching script status: ${errorData}`);
+    }
 }
 /**
  * Handle incoming WebSocket messages.
@@ -161,12 +162,12 @@ function handleWebSocketMessage(message) {
       break;
 
     case "wa-status-update":
-      console.info("WebSocket-Client",`WhatsApp status updated: ${message.data}`);
-      updateStatusUI(message.data.connected ? "connected" : "disconnected");
-      if (message.data.connected) {
-        qrModal.autoCloseOnConnection();
-      }
-      break;
+            console.info("WebSocket-Client", `WhatsApp status updated: ${message.data}`);
+            updateStatusUI(message.data.connected ? "connected" : "disconnected"); // Correctly call updateStatusUI
+            if (message.data.connected) {
+                qrModal.autoCloseOnConnection();
+            }
+            break;
 
     case "wa-account-update":
       console.info("WebSocket-Client",`WhatsApp account updated:`, message.data);
@@ -224,12 +225,12 @@ function handleWebSocketMessage(message) {
       break;
 
     case "initial-status":
-      console.info("WebSocket-Client",`Initial status received:`, message.data);
-      updateWhatsAppStatus(message.data.connected);
-      setWaAccount(message.data.account);
-      updateStatusUI(message.data.state);
-      setIsSubscribed(message.data.subscribed);
-      break;
+            console.info("WebSocket-Client", `Initial status received:`, message.data);
+            // updateWhatsAppStatus(message.data.connected); // Remove this line, we use updateStatusUI instead
+            setWaAccount(message.data.account);
+            updateStatusUI(message.data.state);
+            setIsSubscribed(message.data.subscribed);
+            break;
 
     case "wa-groups":
       console.info("WebSocket-Client",`WhatsApp groups updated:`, message.data);

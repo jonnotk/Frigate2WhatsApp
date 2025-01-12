@@ -93,16 +93,16 @@ function setupApiEndpoints(app) {
     }
   });
 
-  app.get("/api/cameras", (req, res) => {
-      info("Api-endpoints", "Camera list requested");
-      const cameras = getCameras();
-      if (!cameras || cameras.length === 0) {
-        warn("Api-endpoints", "No cameras found");
-        return res.status(404).json({ success: false, error: "No cameras found" });
-      }
-      info("Api-endpoints", `Cameras fetched successfully: ${cameras}`);
-      res.json({ success: true, data: cameras });
-  });
+    app.get("/api/cameras", (req, res) => {
+        info("Api-endpoints", "Camera list requested");
+        const cameras = getCameras();
+        if (!cameras || cameras.length === 0) {
+            warn("Api-endpoints", "No cameras found");
+            return res.status(404).json({ success: false, error: "No cameras found" });
+        }
+        info("Api-endpoints", `Cameras fetched successfully: ${cameras}`);
+        res.json({ success: true, data: cameras });
+    });
 
   app.get("/api/camera-group-mappings", (req, res) => {
     info("Api-endpoints", "Camera group mappings requested");
@@ -304,6 +304,6 @@ function setupApiEndpoints(app) {
 
   info("Api-endpoints", "Endpoints initialized.");
 }
-  
-  // Export only once at the end:
-  export { setupApiEndpoints, handleAssignCameraToGroup };
+
+// Export only once at the end:
+export { setupApiEndpoints, handleAssignCameraToGroup };
