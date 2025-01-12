@@ -6,9 +6,9 @@ import {
     MQTT_PASSWORD,
     DEBUG,
 } from "../constants-server.js";
-import { getCameras, setCameras, notifyStateChange } from "../state.js";
+import { getCameras, setCameras, notifyStateChange } from "./server-state.js"; // Import from server-state
 import { setupLogging } from "../utils/logger.js";
-import { handleNewCamera } from "./camera-logic.js";
+import { assignCameraToGroup, getCameraGroupMappings } from "./camera-logic.js"; // Import from camera-logic
 
 // Initialize logging
 const { info, warn, error, debug } = setupLogging();
@@ -81,7 +81,7 @@ function handleMQTTMessage(topic, payload) {
 
     if (!excludedTopics.some((excluded) => camera.toLowerCase().includes(excluded.toLowerCase()))) {
         // Add the camera only if it doesn't already exist
-        handleNewCamera(camera); // Now handles adding the camera and notifying
+        handleNewCamera(camera); // This function now just adds a new camera to state if not already present
     }
 
     if (topicParts.length >= 3 && topicParts[2] === "events") {
@@ -90,7 +90,7 @@ function handleMQTTMessage(topic, payload) {
         const eventStatus = payload.after.end_time ? "ended" : "started";
 
         info("MQTT", `${severity.toUpperCase()} Event: ${eventType} ${payload.after.label} in ${payload.after.camera} ${eventStatus}`);
-        
+
         // Only broadcast if there's a meaningful change for the frontend
         if (eventStatus === "started" || eventStatus === "ended") {
             notifyStateChange("formatted-event", {
@@ -111,6 +111,20 @@ function handleMQTTMessage(topic, payload) {
             debug("MQTT", `Ignored binary message on topic: ${topic}`);
         }
         return;
+    }
+}
+
+// Handle new camera logic (called from handleMQTTMessage)
+function handleNewCamera(camera) {
+    const cameras = getCameras();
+    if (!cameras.has(camera)) {
+        info("CameraLogic", `Adding new camera: ${camera}`);
+        // Create a new Map with the added camera and copy existing details
+        const updatedCameras = new Map(cameras);
+        updatedCameras.set(camera, {}); // Initialize with an empty object for future details
+        setCameras(updatedCameras); // Update state and notify
+    } else {
+        debug("CameraLogic", `Camera already exists: ${camera}`);
     }
 }
 

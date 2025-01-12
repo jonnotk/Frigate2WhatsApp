@@ -1,6 +1,6 @@
 // modules/script-manager.js
 import { spawn } from "child_process";
-import { getScriptProcess, setScriptProcess } from "../state.js";
+import { getScriptProcess, setScriptProcess } from "./server-state.js";
 import path from "path";
 import { fileURLToPath } from "url";
 import { setupLogging } from "../utils/logger.js";

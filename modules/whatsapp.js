@@ -8,7 +8,7 @@ import {
     getWaAccount,
     setIsSubscribed,
     setIsSubscribing,
-  } from "../state.js";
+  } from "./server-state.js";
   import pkg from "whatsapp-web.js";
   const { Client, LocalAuth, MessageMedia } = pkg;
   import qrcode from "qrcode-terminal";

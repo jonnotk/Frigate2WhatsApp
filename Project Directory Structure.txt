@@ -1,18 +1,14 @@
 FRIGATE2WHATSAPP/
-│
-├── logs/
-│   └── app1.log
-│
 ├── modules/
 │   ├── whatsapp-sessions/
 │   ├── api-endpoints.js
 │   ├── camera-logic.js
 │   ├── mqtt.js
 │   ├── script-manager.js
+│   ├── whatsapp-session-manager.js
 │   ├── websocket-server.js
-│   └── whatsapp.js
-│
-├── node_modules/
+│   ├── whatsapp.js
+│   └── server-state.js  (now in the correct location)
 │
 ├── public/
 │   ├── components/
@@ -24,21 +20,19 @@ FRIGATE2WHATSAPP/
 │   │   ├── qr-modal.js
 │   │   ├── script-control.js
 │   │   ├── websocket-client.js
-│   │   ├── frontend-logger.js
 │   │   └── whatsapp-connection.js
 │   │
 │   ├── app.js
 │   ├── index.html
 │   └── styles.css
+│   └── client-state.js
 │
 ├── utils/
 │   └── logger.js
 │
 ├── .env
-├── .gitignore
 ├── config.js
 ├── constants-server.js
 ├── package.json
-├── README.md
-├── server.js
-└── state.js
+├── package-lock.json
+└── server.js
