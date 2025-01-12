@@ -23,6 +23,7 @@
     "resolve": "^1.22.10",
     "rimraf": "^5.0.5",
     "whatsapp-web.js": "1.26.1-alpha.3",
-    "ws": "^8.16.0"
+    "ws": "^8.16.0",
+    "lodash.isequal": "^4.0.0"
   }
 }

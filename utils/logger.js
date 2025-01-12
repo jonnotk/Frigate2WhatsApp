@@ -2,6 +2,7 @@
 import fs from "fs";
 import path from "path";
 import { LOG_FILE, DEBUG } from "../constants-server.js";
+import { WebSocket } from 'ws';
 
 // Define log levels
 const LOG_LEVELS = {

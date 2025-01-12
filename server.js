@@ -1,4 +1,3 @@
-// server.js
 import express from "express";
 import http from "http";
 import path from "path";
@@ -14,16 +13,19 @@ import {
   LOGS_DIR,
   BASE_DIR,
   UTILS_URL,
-  DASHBOARD_URL
+  DASHBOARD_URL,
 } from "./constants-server.js";
 import { setupLogging } from "./utils/logger.js";
 import { initializeWhatsApp } from "./modules/whatsapp.js";
 
 // Set up logging and get the logger functions
 const { log, info, warn, error } = setupLogging(LOG_FILE);
+
+// Resolve the directory of the current module
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Create Express app and HTTP server
 const app = express();
 const server = http.createServer(app);
 
@@ -38,6 +40,12 @@ app.use(express.static(path.join(BASE_DIR, "public")));
 app.use(COMPONENTS_URL, express.static(path.join(BASE_DIR, "public", "components")));
 app.use(LOGS_DIR, express.static(path.join(BASE_DIR, "logs")));
 app.use(UTILS_URL, express.static(path.join(BASE_DIR, "utils")));
+
+// Serve state.js explicitly from the root directory
+app.get("/state.js", (req, res) => {
+  console.log("Serving state.js from:", path.join(BASE_DIR, "state.js"));
+  res.sendFile(path.join(BASE_DIR, "state.js"));
+});
 
 // Serve index.html for the dashboard route
 app.get(DASHBOARD_URL, (req, res) => {
@@ -72,6 +80,7 @@ app.use((req, res) => {
   res.status(404).json({ success: false, error: "Route not found" });
 });
 
+// Start the server
 server.listen(PORT, HOST, () => {
   info("Server", `Frigate2WhatsApp listening at http://${HOST}:${PORT}`);
 });
