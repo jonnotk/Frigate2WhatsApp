@@ -139,23 +139,23 @@ import {
       }
     });
   
-    waClient.on("ready", async () => {
-      isInitializing = false;
-      info("WhatsApp", "Client is ready.");
-      setWaConnected(true);
-      setIsSubscribed(true);
-      setIsSubscribing(false);
-      notifyStateChange("wa-status-update", { connected: true });
-      notifyStateChange("connection-state-update", CONNECTION_STATES.CONNECTED);
-  
-      if (qrRefreshInterval) {
-        clearInterval(qrRefreshInterval);
-        qrRefreshInterval = null;
-      }
-  
-      await updateAccountInfo();
-      startGroupPolling();
-    });
+   waClient.on("ready", async () => {
+    console.info("WhatsApp", "Client is ready.");
+    setWaConnected(true);
+    setIsSubscribed(true);
+    setIsSubscribing(false);
+    notifyStateChange("wa-status-update", { connected: true });
+    notifyStateChange("connection-state-update", CONNECTION_STATES.CONNECTED);
+
+    // Stop QR refresh interval if it exists
+    if (qrRefreshInterval) {
+        clearInterval(qrRefreshInterval);
+        qrRefreshInterval = null;
+    }
+
+    await updateAccountInfo();
+    startGroupPolling();
+});
   
     waClient.on("authenticated", () => {
       isInitializing = false;

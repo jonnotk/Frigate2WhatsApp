@@ -42,8 +42,16 @@ import {
   /**
    * Initializes the WhatsApp Connection module.
    */
-  function initializeWhatsAppConnection() {
-    console.info("WhatsApp-Connection", "Initializing...");
+  let isInitialized = false;
+
+function initializeWhatsAppConnection() {
+    if (isInitialized) {
+        console.warn("WhatsApp-Connection", "Already initialized. Skipping.");
+        return;
+    }
+    isInitialized = true;
+
+    console.info("WhatsApp-Connection", "Initializing...");
   
     // Attach event listeners to buttons
     document

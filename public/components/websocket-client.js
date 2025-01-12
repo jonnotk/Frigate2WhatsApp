@@ -81,10 +81,12 @@ function connectWebSocket(sessionId, wsUrl) {
     };
 
     // Event: Connection closed
-    socket.onclose = () => {
-        console.warn("WebSocket-Client",`[WebSocket Client] Connection closed. Reconnecting in 5 seconds...`);
-        setTimeout(initializeSocket, 5000); // Retry connection after 5 seconds
-    };
+   socket.onclose = () => {
+    console.warn("WebSocket-Client", "Connection closed. Reconnecting in 5 seconds...");
+    setTimeout(() => {
+        initializeSocket(); // Reconnect WebSocket
+    }, 5000);
+};
 }
 
 /**

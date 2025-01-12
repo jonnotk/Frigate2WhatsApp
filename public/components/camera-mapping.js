@@ -50,11 +50,9 @@ const cameraMapping = {
             const errorData = await response.json();
             console.error("Camera Mapping", "Failed to fetch cameras:", errorData);
             if (response.status === 404 && errorData.error === 'No cameras found') {
-                // Handle the case where no cameras are found
                 console.warn("Camera Mapping", "No cameras found in the database.");
                 cameraMapping.updateCameraList([], {}); // Update with an empty list
             } else {
-                // Handle other errors
                 console.error("Camera Mapping", "Failed to fetch cameras:", errorData);
             }
             return;

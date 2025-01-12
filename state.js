@@ -1,6 +1,7 @@
 // state.js
 
 import { isDeepEqual } from "./utils/utils.js";
+console.log("isDeepEqual available:", typeof isDeepEqual);
 
 // Use a simple locking mechanism to prevent concurrent updates
 let isUpdating = false;

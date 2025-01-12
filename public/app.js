@@ -19,8 +19,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         codeEditor.initialize();
         fileEditor.initialize();
         qrModal.initialize();
-        initializeWhatsAppConnection();
-
+        initializeWhatsAppConnection(); // Ensure this is called only once
     } catch (error) {
         console.error('App', 'Error initializing WebSocket:', error);
     }
